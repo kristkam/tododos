@@ -9,8 +9,8 @@ import {
   orderBy,
   onSnapshot,
   Timestamp,
-  DocumentData,
-  QueryDocumentSnapshot
+  type DocumentData,
+  type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db } from './config';
 import type { TodoList, TodoItem } from '../types';
@@ -113,7 +113,7 @@ export const firebaseService = {
         createdAt: list.createdAt,
         updatedAt: new Date() // Always update the timestamp
       });
-      await updateDoc(listRef, firestoreData);
+      await updateDoc(listRef, firestoreData as Partial<FirestoreTodoList>);
     } catch (error) {
       console.error('Error updating list in Firebase:', error);
       throw error;
