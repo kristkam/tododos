@@ -1,6 +1,6 @@
 # Firebase Integration Setup
 
-This todo application now supports both local storage and Firebase Firestore as storage backends.
+This todo application uses Firebase Firestore as its primary data storage backend with real-time synchronization.
 
 ## Prerequisites
 
@@ -35,9 +35,6 @@ This todo application now supports both local storage and Firebase Firestore as 
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_actual_sender_id
    VITE_FIREBASE_APP_ID=your_actual_app_id
    VITE_FIREBASE_MEASUREMENT_ID=your_actual_measurement_id
-   
-   # Set to 'true' to enable Firebase, 'false' to use localStorage
-   VITE_USE_FIREBASE=true
    ```
 
 ## Firestore Security Rules
@@ -61,17 +58,11 @@ service cloud.firestore {
 
 ## Features
 
-### Firebase Mode (`VITE_USE_FIREBASE=true`)
-- Real-time synchronization across multiple devices/tabs
-- Cloud persistence - data survives browser clearing
-- Automatic conflict resolution
-- Network-aware error handling
-
-### Local Storage Mode (`VITE_USE_FIREBASE=false` or not set)
-- Offline-first approach
-- No network dependency
-- Instant operations
-- Privacy-focused (data stays local)
+- **Real-time synchronization** across multiple devices/tabs
+- **Cloud persistence** - data survives browser clearing
+- **Automatic conflict resolution**
+- **Network-aware error handling**
+- **Optimistic updates** with error recovery
 
 ## Data Structure
 
@@ -91,12 +82,6 @@ todoLists (collection)
 │           └── createdAt: Timestamp
 ```
 
-## Switching Between Modes
-
-You can switch between Firebase and localStorage by changing the `VITE_USE_FIREBASE` environment variable and restarting the development server.
-
-**Important:** Data is not automatically migrated between modes. If you have data in localStorage and switch to Firebase, you'll start with an empty state and vice versa.
-
 ## Error Handling
 
 The app includes comprehensive error handling:
@@ -109,12 +94,11 @@ All errors are displayed via toast notifications and logged to the console for d
 
 ## Development
 
-To test Firebase integration during development:
+To test the Firebase integration:
 
 1. Make sure you have a `.env.local` file with valid Firebase configuration
-2. Set `VITE_USE_FIREBASE=true`
-3. Start the development server: `yarn dev`
-4. Open multiple browser tabs to see real-time synchronization
+2. Start the development server: `yarn dev`
+3. Open multiple browser tabs to see real-time synchronization
 
 ## Production Considerations
 
@@ -125,3 +109,12 @@ For production deployment:
 3. **Environment Variables:** Ensure all Firebase config variables are properly set in your hosting environment
 4. **Error Monitoring:** Consider adding error tracking services
 5. **Performance:** Monitor Firestore usage and optimize queries if needed
+
+## Architecture
+
+The app now uses a simplified, Firebase-only architecture:
+
+- **`useTodoLists` hook** - Manages all data operations and real-time sync
+- **`todoStorage`** - Firebase service layer with CRUD operations
+- **`firebaseService`** - Low-level Firestore operations
+- **Current list ID** - Still stored in localStorage as UI state (not data)
