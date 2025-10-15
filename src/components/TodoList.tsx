@@ -1,4 +1,4 @@
-import React, { useState, useOptimistic } from 'react';
+import React, { useState, useTransition } from 'react';
 import type { TodoList as TodoListType, TodoItem as TodoItemType } from '../types';
 import { TodoItem } from './TodoItem';
 
@@ -9,23 +9,7 @@ interface TodoListProps {
 
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
-
-  // Optimistic state for items to prevent flickering
-  const [optimisticItems, addOptimisticItem] = useOptimistic(
-    list.items,
-    (state: TodoItemType[], action: { type: 'add' | 'update' | 'delete', item?: TodoItemType, itemId?: string }) => {
-      switch (action.type) {
-        case 'add':
-          return action.item ? [...state, action.item] : state;
-        case 'update':
-          return action.item ? state.map(item => item.id === action.item!.id ? action.item! : item) : state;
-        case 'delete':
-          return action.itemId ? state.filter(item => item.id !== action.itemId) : state;
-        default:
-          return state;
-      }
-    }
-  );
+  const [isPending, startTransition] = useTransition();
 
   const addItem = () => {
     if (newItemText.trim()) {
@@ -36,24 +20,22 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
         createdAt: new Date()
       };
 
-      // Optimistically add the item immediately
-      addOptimisticItem({ type: 'add', item: newItem });
-
       const updatedList = {
         ...list,
         items: [...list.items, newItem],
         updatedAt: new Date()
       };
 
-      onUpdateList(updatedList);
+      // Use transition to make the update non-urgent and prevent interruptions
+      startTransition(() => {
+        onUpdateList(updatedList);
+      });
+      
       setNewItemText('');
     }
   };
 
   const updateItem = (updatedItem: TodoItemType) => {
-    // Optimistically update the item immediately
-    addOptimisticItem({ type: 'update', item: updatedItem });
-
     const updatedList = {
       ...list,
       items: list.items.map(item => 
@@ -62,20 +44,21 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
       updatedAt: new Date()
     };
 
-    onUpdateList(updatedList);
+    startTransition(() => {
+      onUpdateList(updatedList);
+    });
   };
 
   const deleteItem = (itemId: string) => {
-    // Optimistically delete the item immediately
-    addOptimisticItem({ type: 'delete', itemId });
-
     const updatedList = {
       ...list,
       items: list.items.filter(item => item.id !== itemId),
       updatedAt: new Date()
     };
 
-    onUpdateList(updatedList);
+    startTransition(() => {
+      onUpdateList(updatedList);
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -91,8 +74,8 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     addItem();
   };
 
-  const completedCount = optimisticItems.filter(item => item.completed).length;
-  const totalCount = optimisticItems.length;
+  const completedCount = list.items.filter(item => item.completed).length;
+  const totalCount = list.items.length;
 
   return (
     <div className="todo-list">
@@ -118,12 +101,12 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
       </div>
 
       <div className="todo-items">
-        {optimisticItems.length === 0 ? (
+        {list.items.length === 0 ? (
           <div className="empty-list">
             No items yet. Add your first item above!
           </div>
         ) : (
-          optimisticItems.map(item => (
+          list.items.map(item => (
             <TodoItem
               key={item.id}
               item={item}
