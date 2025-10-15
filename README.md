@@ -17,7 +17,7 @@ A modern, responsive todo list application built with React 19, TypeScript, and 
 ### 🔄 **Real-time Sync**
 - Powered by Firebase Firestore for instant synchronization
 - Changes appear immediately on all connected devices
-- Optimistic updates using React 19's `useOptimistic` for instant UI feedback
+- Smooth updates using React 19's `useTransition` for optimal mobile performance
 
 ### 📱 **Mobile-First Design**
 - Responsive design that works perfectly on all screen sizes
@@ -91,9 +91,9 @@ A modern, responsive todo list application built with React 19, TypeScript, and 
 ```
 src/
 ├── components/          # React components
-│   ├── AppContent.tsx   # Main app logic with useOptimistic
+│   ├── AppContent.tsx   # Main app logic with useOptimistic for lists
 │   ├── ListSelector.tsx # List selection and creation
-│   ├── TodoList.tsx     # Individual list view
+│   ├── TodoList.tsx     # Individual list view with useTransition
 │   ├── TodoItem.tsx     # Todo item component
 │   ├── ConfirmModal.tsx # Deletion confirmation modal
 │   └── Toast.tsx        # Toast notification system
@@ -119,12 +119,13 @@ src/
 ### Real-time Data Sync
 - Uses Firestore's `onSnapshot` for real-time subscriptions
 - Automatically handles connection states and offline scenarios
-- Optimistic updates with `useOptimistic` for instant UI feedback
+- Strategic use of `useOptimistic` for list creation and `useTransition` for item operations
 
 ### Mobile Optimization
 - 16px font size on mobile inputs to prevent iOS Safari zoom
 - Touch-optimized button sizes and spacing
 - Responsive breakpoints for different screen sizes
+- Optimized update patterns to prevent mobile flickering
 
 ### Error Handling
 - Comprehensive error handling with user-friendly messages
@@ -133,6 +134,7 @@ src/
 
 ### Performance Features
 - React 19's concurrent features for smooth interactions
+- `useTransition` for non-urgent updates to prevent UI blocking
 - Efficient re-renders with proper dependency arrays
 - Optimized Firestore queries with proper indexing
 
