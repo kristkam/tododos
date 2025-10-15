@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useOptimistic } from 'react';
 import type { TodoList as TodoListType } from '../types';
 import { ListSelector } from './ListSelector';
 import { TodoList } from './TodoList';
 import { ConfirmModal } from './ConfirmModal';
-import { useFirebaseSync } from '../hooks/useFirebaseSync';
+import { useTodoLists } from '../hooks/useTodoLists';
 import { 
   saveCurrentListIdToStorage, 
   loadCurrentListIdFromStorage 
@@ -15,18 +15,45 @@ export function AppContent() {
   const [showBackButton, setShowBackButton] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [listToDelete, setListToDelete] = useState<TodoListType | null>(null);
-  const { lists, loading, createList: createListFirebase, updateList: updateListFirebase, deleteList: deleteListFirebase } = useFirebaseSync();
+  const [pendingListName, setPendingListName] = useState<string | null>(null);
+  const { lists, loading, createList: createListFirebase, updateList: updateListFirebase, deleteList: deleteListFirebase } = useTodoLists();
+
+  // Optimistic state for lists - allows immediate UI updates
+  const [optimisticLists, addOptimisticList] = useOptimistic(
+    lists,
+    (state: TodoListType[], newList: TodoListType) => [...state, newList]
+  );
 
   // Load current list ID from localStorage on app start
   useEffect(() => {
     const savedCurrentListId = loadCurrentListIdFromStorage();
     
-    if (savedCurrentListId && lists.some(list => list.id === savedCurrentListId)) {
+    if (savedCurrentListId && optimisticLists.some(list => list.id === savedCurrentListId)) {
       setCurrentListId(savedCurrentListId);
       setView('list');
       setShowBackButton(true); // Show immediately for restored state
     }
-  }, [lists]); // Depend on lists to ensure they're loaded before checking
+  }, [optimisticLists]); // Depend on optimisticLists to ensure they're loaded before checking
+
+  // Watch for when a real list becomes available to replace temp list
+  useEffect(() => {
+    if (pendingListName && currentListId?.startsWith('temp-')) {
+      // Look for a real list with the pending name that's not our temp list
+      const realList = optimisticLists.find(
+        list => list.name === pendingListName && !list.id.startsWith('temp-')
+      );
+      
+      if (realList) {
+        setCurrentListId(realList.id);
+        setPendingListName(null);
+        
+        // Start showing back button 125ms before toast finishes
+        setTimeout(() => {
+          setShowBackButton(true);
+        }, 2675);
+      }
+    }
+  }, [optimisticLists, pendingListName, currentListId]);
 
   // Save current list ID whenever it changes
   useEffect(() => {
@@ -34,18 +61,31 @@ export function AppContent() {
   }, [currentListId]);
 
   const createList = async (name: string) => {
-    const listId = await createListFirebase(name);
-    if (listId) {
-      setCurrentListId(listId);
-      setView('list'); // Immediate view switch to prevent flickering
-      
-      // Start showing back button 125ms before toast finishes
-      // Toast duration: 2500ms + exit animation: 300ms = 2800ms total
-      // Start button 125ms before toast is gone for optimal overlap
-      setTimeout(() => {
-        setShowBackButton(true);
-      }, 2675); // Show button 125ms before toast is completely gone
+    // Generate a temporary ID for optimistic update
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimisticList: TodoListType = {
+      id: tempId,
+      name,
+      items: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Optimistically add the list and switch to it immediately
+    addOptimisticList(optimisticList);
+    setCurrentListId(tempId);
+    setView('list');
+    setPendingListName(name); // Track the name to find the real list when it arrives
+
+    // Perform the actual Firebase operation
+    const actualListId = await createListFirebase(name);
+    if (!actualListId) {
+      // If creation failed, go back to selector
+      setCurrentListId(null);
+      setView('selector');
+      setPendingListName(null);
     }
+    // Success case is handled by the useEffect watching for the real list
   };
 
   const selectList = (listId: string) => {
@@ -55,7 +95,7 @@ export function AppContent() {
   };
 
   const deleteList = (listId: string) => {
-    const listToDeleteObj = lists.find(list => list.id === listId);
+    const listToDeleteObj = optimisticLists.find(list => list.id === listId);
     if (listToDeleteObj) {
       setListToDelete(listToDeleteObj);
       setShowDeleteModal(true);
@@ -90,7 +130,7 @@ export function AppContent() {
     setView('selector');
   };
 
-  const currentList = currentListId ? lists.find(list => list.id === currentListId) : null;
+  const currentList = currentListId ? optimisticLists.find(list => list.id === currentListId) : null;
 
   return (
     <div className="app">
@@ -111,7 +151,7 @@ export function AppContent() {
           </div>
         ) : view === 'selector' ? (
           <ListSelector
-            lists={lists}
+            lists={optimisticLists}
             currentListId={currentListId}
             onSelectList={selectList}
             onCreateList={createList}
