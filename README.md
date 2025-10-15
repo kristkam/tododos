@@ -1,75 +1,157 @@
-# React + TypeScript + Vite
+# Tododos - Modern Todo List Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive todo list application built with React 19, TypeScript, and Firebase Firestore. Features real-time synchronization, mobile-optimized UI, and smooth user interactions.
 
-Currently, two official plugins are available:
+## ✨ Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🗂️ **Multiple Lists Management**
+- Create and manage multiple todo lists (e.g., Grocery Lists, Work Tasks, etc.)
+- Real-time synchronization across all devices and browser tabs
+- Confirmation dialogs for safe list deletion
 
-## React Compiler
+### ✅ **Todo Items**
+- Add, edit, and delete individual todo items
+- Mark items as completed with visual feedback
+- Inline editing with keyboard shortcuts (Enter to save, Escape to cancel)
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### 🔄 **Real-time Sync**
+- Powered by Firebase Firestore for instant synchronization
+- Changes appear immediately on all connected devices
+- Optimistic updates using React 19's `useOptimistic` for instant UI feedback
 
-Note: This will impact Vite dev & build performances.
+### 📱 **Mobile-First Design**
+- Responsive design that works perfectly on all screen sizes
+- Mobile-optimized touch interactions
+- Prevents iOS Safari zoom on input focus (16px font size on mobile)
 
-## Expanding the ESLint configuration
+### 🎨 **Modern UI/UX**
+- Glass-morphism design with backdrop blur effects
+- Smooth animations and transitions
+- Discrete toast notifications for user feedback
+- Loading states and error handling
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### ⚡ **Performance**
+- Built with Vite for lightning-fast development and builds
+- React 19 with React Compiler for optimized performance
+- Efficient Firebase real-time subscriptions
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Quick Start
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
+- Node.js 18+ and Yarn
+- Firebase project with Firestore enabled
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/kristkam/tododos.git
+   cd tododos
+   ```
+
+2. **Install dependencies**
+   ```bash
+   yarn install
+   ```
+
+3. **Set up Firebase**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Update `.env.local` with your Firebase configuration values.
+
+4. **Start development server**
+   ```bash
+   yarn dev
+   ```
+
+5. **Open in browser**
+   Navigate to `http://localhost:5173`
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **React 19** - Latest React with concurrent features
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **CSS3** - Modern CSS with animations and responsive design
+
+### Backend & Database
+- **Firebase Firestore** - Real-time NoSQL database
+- **Firebase SDK v12** - Latest Firebase JavaScript SDK
+
+### Development Tools
+- **ESLint** - Code linting with React and TypeScript rules
+- **React Compiler** - Automatic optimization compilation
+- **React DevTools** - Enhanced debugging support
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── AppContent.tsx   # Main app logic with useOptimistic
+│   ├── ListSelector.tsx # List selection and creation
+│   ├── TodoList.tsx     # Individual list view
+│   ├── TodoItem.tsx     # Todo item component
+│   ├── ConfirmModal.tsx # Deletion confirmation modal
+│   └── Toast.tsx        # Toast notification system
+├── hooks/               # Custom React hooks
+│   ├── useTodoLists.ts  # Firebase data management
+│   └── useToast.ts      # Toast notifications
+├── firebase/            # Firebase configuration and services
+│   ├── config.ts        # Firebase app initialization
+│   ├── todoService.ts   # Firestore operations
+│   └── storageAdapter.ts # Data storage abstraction
+├── contexts/            # React context providers
+│   ├── toast.ts         # Toast context definition
+│   └── ToastContext.tsx # Toast provider component
+├── types.ts             # TypeScript type definitions
+├── storage.ts           # localStorage utilities (UI state)
+├── App.tsx              # Root app component
+├── App.css              # Global styles and animations
+└── main.tsx             # App entry point
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔧 Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Firestore Security Rules
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /todoLists/{document=**} {
+      allow read, write: if true; // Update for production with proper auth
+    }
+  }
+}
 ```
+
+## 🎯 Key Implementation Details
+
+### Real-time Data Sync
+- Uses Firestore's `onSnapshot` for real-time subscriptions
+- Automatically handles connection states and offline scenarios
+- Optimistic updates with `useOptimistic` for instant UI feedback
+
+### Mobile Optimization
+- 16px font size on mobile inputs to prevent iOS Safari zoom
+- Touch-optimized button sizes and spacing
+- Responsive breakpoints for different screen sizes
+
+### Error Handling
+- Comprehensive error handling with user-friendly messages
+- Network-aware error recovery
+- Toast notifications for all user actions
+
+### Performance Features
+- React 19's concurrent features for smooth interactions
+- Efficient re-renders with proper dependency arrays
+- Optimized Firestore queries with proper indexing
+
+##  Acknowledgments
+
+- Built with [Vite](https://vitejs.dev/) for amazing developer experience
+- Powered by [Firebase](https://firebase.google.com/) for real-time capabilities
+- Inspired by modern todo applications and productivity tools
