@@ -114,20 +114,6 @@ src/
 └── main.tsx             # App entry point
 ```
 
-## 🔧 Configuration
-
-### Firestore Security Rules
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /todoLists/{document=**} {
-      allow read, write: if true; // Update for production with proper auth
-    }
-  }
-}
-```
-
 ## 🎯 Key Implementation Details
 
 ### Real-time Data Sync
