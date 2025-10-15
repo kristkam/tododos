@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useOptimistic } from 'react';
 import type { TodoList as TodoListType, TodoItem as TodoItemType } from '../types';
 import { TodoItem } from './TodoItem';
 
@@ -10,6 +10,23 @@ interface TodoListProps {
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
 
+  // Optimistic state for items to prevent flickering
+  const [optimisticItems, addOptimisticItem] = useOptimistic(
+    list.items,
+    (state: TodoItemType[], action: { type: 'add' | 'update' | 'delete', item?: TodoItemType, itemId?: string }) => {
+      switch (action.type) {
+        case 'add':
+          return action.item ? [...state, action.item] : state;
+        case 'update':
+          return action.item ? state.map(item => item.id === action.item!.id ? action.item! : item) : state;
+        case 'delete':
+          return action.itemId ? state.filter(item => item.id !== action.itemId) : state;
+        default:
+          return state;
+      }
+    }
+  );
+
   const addItem = () => {
     if (newItemText.trim()) {
       const newItem: TodoItemType = {
@@ -18,6 +35,9 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
         completed: false,
         createdAt: new Date()
       };
+
+      // Optimistically add the item immediately
+      addOptimisticItem({ type: 'add', item: newItem });
 
       const updatedList = {
         ...list,
@@ -31,6 +51,9 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   };
 
   const updateItem = (updatedItem: TodoItemType) => {
+    // Optimistically update the item immediately
+    addOptimisticItem({ type: 'update', item: updatedItem });
+
     const updatedList = {
       ...list,
       items: list.items.map(item => 
@@ -43,6 +66,9 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   };
 
   const deleteItem = (itemId: string) => {
+    // Optimistically delete the item immediately
+    addOptimisticItem({ type: 'delete', itemId });
+
     const updatedList = {
       ...list,
       items: list.items.filter(item => item.id !== itemId),
@@ -65,8 +91,8 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     addItem();
   };
 
-  const completedCount = list.items.filter(item => item.completed).length;
-  const totalCount = list.items.length;
+  const completedCount = optimisticItems.filter(item => item.completed).length;
+  const totalCount = optimisticItems.length;
 
   return (
     <div className="todo-list">
@@ -92,12 +118,12 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
       </div>
 
       <div className="todo-items">
-        {list.items.length === 0 ? (
+        {optimisticItems.length === 0 ? (
           <div className="empty-list">
             No items yet. Add your first item above!
           </div>
         ) : (
-          list.items.map(item => (
+          optimisticItems.map(item => (
             <TodoItem
               key={item.id}
               item={item}
