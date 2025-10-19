@@ -3,6 +3,7 @@ import type { TodoList as TodoListType } from '../types';
 import { ListSelector } from './ListSelector';
 import { TodoList } from './TodoList';
 import { ConfirmModal } from './ConfirmModal';
+import { BackArrowIcon } from './icons';
 import { useTodoLists } from '../hooks/useTodoLists';
 import { 
   saveCurrentListIdToStorage, 
@@ -136,9 +137,9 @@ export function AppContent() {
     <div className="app">
       <header className="app-header">
         <h1>Tododos</h1>
-        {view === 'list' && showBackButton && (
-          <button onClick={goBackToSelector} className="back-btn">
-            ← Back to Lists
+        {showBackButton && (
+          <button className="back-btn" onClick={goBackToSelector}>
+            <BackArrowIcon size={20} />
           </button>
         )}
       </header>
