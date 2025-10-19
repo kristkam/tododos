@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CheckIcon, CancelIcon, CloseIcon } from './icons';
 
 export interface ToastData {
   id: string;
@@ -36,13 +37,13 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return '✓';
+        return <CheckIcon size={14} />;
       case 'error':
-        return '✗';
+        return <CancelIcon size={14} />;
       case 'info':
-        return 'ℹ';
+        return <span style={{ fontSize: '12px', fontWeight: 'bold' }}>i</span>;
       default:
-        return 'ℹ';
+        return <span style={{ fontSize: '12px', fontWeight: 'bold' }}>i</span>;
     }
   };
 
@@ -66,7 +67,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
         className="toast-close"
         aria-label="Close notification"
       >
-        ×
+        <CloseIcon size={14} />
       </button>
     </div>
   );

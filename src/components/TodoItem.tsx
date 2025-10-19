@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { TodoItem as TodoItemType } from '../types';
+import { CheckIcon, CancelIcon, EditIcon, DeleteIcon } from './icons';
 
 interface TodoItemProps {
   item: TodoItemType;
@@ -94,8 +95,12 @@ export const TodoItem: React.FC<TodoItemProps> = ({ item, onUpdate, onDelete }) 
             className="todo-edit-input"
           />
           <div className="todo-edit-actions">
-            <button onClick={handleSaveClick} className="save-btn">✓</button>
-            <button onClick={handleCancelClick} className="cancel-btn">✗</button>
+            <button onClick={handleSaveClick} className="save-btn">
+              <CheckIcon />
+            </button>
+            <button onClick={handleCancelClick} className="cancel-btn">
+              <CancelIcon />
+            </button>
           </div>
         </div>
       ) : (
@@ -107,8 +112,12 @@ export const TodoItem: React.FC<TodoItemProps> = ({ item, onUpdate, onDelete }) 
             {item.text}
           </span>
           <div className="todo-actions">
-            <button onClick={handleEditClick} className="edit-btn">✎</button>
-            <button onClick={handleDeleteClick} className="delete-btn">🗑</button>
+            <button onClick={handleEditClick} className="edit-btn">
+              <EditIcon />
+            </button>
+            <button onClick={handleDeleteClick} className="delete-btn">
+              <DeleteIcon />
+            </button>
           </div>
         </div>
       )}

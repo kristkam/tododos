@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import type { TodoList } from '../types';
+import { ConfirmModal } from './ConfirmModal';
+import { useToast } from '../hooks/useToast';
+import { CheckIcon, CancelIcon, DeleteIcon } from './icons';
 
 interface ListSelectorProps {
   lists: TodoList[];
@@ -83,8 +86,12 @@ export const ListSelector: React.FC<ListSelectorProps> = ({
               className="create-list-input"
               autoFocus
             />
-            <button onClick={handleCreateClick} className="save-btn">✓</button>
-            <button onClick={handleCancelClick} className="cancel-btn">✗</button>
+            <button onClick={handleCreateClick} className="save-btn">
+              <CheckIcon />
+            </button>
+            <button onClick={handleCancelClick} className="cancel-btn">
+              <CancelIcon />
+            </button>
           </div>
         )}
       </div>
@@ -113,7 +120,7 @@ export const ListSelector: React.FC<ListSelectorProps> = ({
                 className="delete-list-btn"
                 title="Delete list"
               >
-                🗑
+                <DeleteIcon />
               </button>
             </div>
           ))
