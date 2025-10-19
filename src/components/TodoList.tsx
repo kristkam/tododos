@@ -9,7 +9,7 @@ interface TodoListProps {
 
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const addItem = () => {
     if (newItemText.trim()) {

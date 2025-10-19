@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import type { TodoList } from '../types';
-import { ConfirmModal } from './ConfirmModal';
-import { useToast } from '../hooks/useToast';
 import { CheckIcon, CancelIcon, DeleteIcon } from './icons';
 
 interface ListSelectorProps {
