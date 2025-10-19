@@ -1,6 +1,8 @@
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import type { TodoList as TodoListType, TodoItem as TodoItemType } from '../types';
 import { TodoItem } from './TodoItem';
+
+type SortOption = 'normal' | 'completed-top' | 'completed-bottom' | 'alphabetical' | 'newest-first' | 'oldest-first';
 
 interface TodoListProps {
   list: TodoListType;
@@ -9,6 +11,7 @@ interface TodoListProps {
 
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('normal');
   const [, startTransition] = useTransition();
 
   const addItem = () => {
@@ -77,12 +80,63 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const completedCount = list.items.filter(item => item.completed).length;
   const totalCount = list.items.length;
 
+  const sortedItems = useMemo(() => {
+    const items = [...list.items];
+    
+    switch (sortBy) {
+      case 'completed-top':
+        return items.sort((a, b) => {
+          if (a.completed && !b.completed) return -1;
+          if (!a.completed && b.completed) return 1;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+      
+      case 'completed-bottom':
+        return items.sort((a, b) => {
+          if (!a.completed && b.completed) return -1;
+          if (a.completed && !b.completed) return 1;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+      
+      case 'alphabetical':
+        return items.sort((a, b) => a.text.localeCompare(b.text));
+      
+      case 'newest-first':
+        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      case 'oldest-first':
+        return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      
+      case 'normal':
+      default:
+        return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+  }, [list.items, sortBy]);
+
   return (
     <div className="todo-list">
       <div className="todo-list-header">
-        <h2>{list.name}</h2>
-        <div className="todo-stats">
-          {completedCount} of {totalCount} completed
+        <div className="todo-list-title">
+          <h2>{list.name}</h2>
+          <div className="todo-stats">
+            {completedCount} of {totalCount} completed
+          </div>
+        </div>
+        <div className="todo-sort">
+          <label htmlFor="sort-select">Sort by:</label>
+          <select 
+            id="sort-select"
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="sort-select"
+          >
+            <option value="normal">Date Added</option>
+            <option value="completed-top">Completed First</option>
+            <option value="completed-bottom">Completed Last</option>
+            <option value="alphabetical">Alphabetical</option>
+            <option value="newest-first">Newest First</option>
+            <option value="oldest-first">Oldest First</option>
+          </select>
         </div>
       </div>
 
@@ -101,12 +155,12 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
       </div>
 
       <div className="todo-items">
-        {list.items.length === 0 ? (
+        {sortedItems.length === 0 ? (
           <div className="empty-list">
             No items yet. Add your first item above!
           </div>
         ) : (
-          list.items.map(item => (
+          sortedItems.map(item => (
             <TodoItem
               key={item.id}
               item={item}
