@@ -51,7 +51,8 @@ export const useTodoLists = () => {
         name,
         items: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        sortBy: 'normal' as const
       };
 
       const listId = await todoStorage.createList(newList);

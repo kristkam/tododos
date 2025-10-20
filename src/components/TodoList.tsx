@@ -1,8 +1,9 @@
-import React, { useState, useTransition, useMemo } from 'react';
+import React, { useState, useTransition, useMemo, useEffect } from 'react';
 import type { TodoList as TodoListType, TodoItem as TodoItemType } from '../types';
 import { TodoItem } from './TodoItem';
+import { SortUnsortedIcon, SortCompletedTopIcon, SortCompletedBottomIcon } from './icons';
 
-type SortOption = 'normal' | 'completed-top' | 'completed-bottom' | 'alphabetical' | 'newest-first' | 'oldest-first';
+type SortOption = 'normal' | 'completed-top' | 'completed-bottom';
 
 interface TodoListProps {
   list: TodoListType;
@@ -11,8 +12,57 @@ interface TodoListProps {
 
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('normal');
+  const [sortBy, setSortBy] = useState<SortOption>(list.sortBy || 'normal');
   const [, startTransition] = useTransition();
+
+  // Update sortBy when switching between different lists
+  useEffect(() => {
+    setSortBy(list.sortBy || 'normal');
+  }, [list.id, list.sortBy]);
+
+  const cycleSortOrder = () => {
+    const nextSort: SortOption = 
+      sortBy === 'normal' ? 'completed-top' :
+      sortBy === 'completed-top' ? 'completed-bottom' :
+      'normal';
+    
+    setSortBy(nextSort);
+    
+    // Update the list with the new sort preference
+    const updatedList = {
+      ...list,
+      sortBy: nextSort,
+      updatedAt: new Date()
+    };
+
+    startTransition(() => {
+      onUpdateList(updatedList);
+    });
+  };
+
+  const getSortIcon = () => {
+    switch (sortBy) {
+      case 'completed-top':
+        return <SortCompletedTopIcon size={20} />;
+      case 'completed-bottom':
+        return <SortCompletedBottomIcon size={20} />;
+      case 'normal':
+      default:
+        return <SortUnsortedIcon size={20} />;
+    }
+  };
+
+  const getSortLabel = () => {
+    switch (sortBy) {
+      case 'completed-top':
+        return 'Finished First';
+      case 'completed-bottom':
+        return 'Finished Last';
+      case 'normal':
+      default:
+        return 'Unsorted';
+    }
+  };
 
   const addItem = () => {
     if (newItemText.trim()) {
@@ -98,15 +148,6 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         });
       
-      case 'alphabetical':
-        return items.sort((a, b) => a.text.localeCompare(b.text));
-      
-      case 'newest-first':
-        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
-      case 'oldest-first':
-        return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      
       case 'normal':
       default:
         return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -118,25 +159,19 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
       <div className="todo-list-header">
         <div className="todo-list-title">
           <h2>{list.name}</h2>
-          <div className="todo-stats">
-            {completedCount} of {totalCount} completed
+          <div className="todo-meta">
+            <div className="todo-stats">
+              {completedCount} of {totalCount} completed
+            </div>
+            <button
+              onClick={cycleSortOrder}
+              className="sort-btn"
+              title={`Currently: ${getSortLabel()}. Click to change sorting.`}
+              aria-label={`Sort todos. Currently ${getSortLabel()}`}
+            >
+              {getSortIcon()}
+            </button>
           </div>
-        </div>
-        <div className="todo-sort">
-          <label htmlFor="sort-select">Sort by:</label>
-          <select 
-            id="sort-select"
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="sort-select"
-          >
-            <option value="normal">Date Added</option>
-            <option value="completed-top">Completed First</option>
-            <option value="completed-bottom">Completed Last</option>
-            <option value="alphabetical">Alphabetical</option>
-            <option value="newest-first">Newest First</option>
-            <option value="oldest-first">Oldest First</option>
-          </select>
         </div>
       </div>
 

@@ -23,6 +23,65 @@ export const BackArrowIcon: React.FC<IconProps> = ({ size = 18, className = '', 
   </svg>
 );
 
+// Sort Icons
+export const SortUnsortedIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M3 12h18"></path>
+    <path d="M3 6h18"></path>
+    <path d="M3 18h18"></path>
+  </svg>
+);
+
+export const SortCompletedTopIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M3 6h18"></path>
+    <path d="M3 12h12"></path>
+    <path d="M3 18h6"></path>
+    <circle cx="17" cy="15" r="3" fill={color}></circle>
+    <path d="m16 14 1 1 2-2" stroke="white" strokeWidth="1.5"></path>
+  </svg>
+);
+
+export const SortCompletedBottomIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M3 18h18"></path>
+    <path d="M3 12h12"></path>
+    <path d="M3 6h6"></path>
+    <circle cx="17" cy="9" r="3" fill={color}></circle>
+    <path d="m16 8 1 1 2-2" stroke="white" strokeWidth="1.5"></path>
+  </svg>
+);
+
 // Check/Save Icon
 export const CheckIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
   <svg

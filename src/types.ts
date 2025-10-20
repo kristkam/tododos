@@ -11,6 +11,7 @@ export interface TodoList {
   items: TodoItem[];
   createdAt: Date;
   updatedAt: Date;
+  sortBy?: 'normal' | 'completed-top' | 'completed-bottom';
 }
 
 export interface AppState {

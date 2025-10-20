@@ -306,6 +306,13 @@
   flex: 1;
 }
 
+.todo-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
 .todo-list-header h2 {
   margin: 0 0 0.75rem 0;
   color: #1e293b;
@@ -314,23 +321,12 @@
   letter-spacing: -0.025em;
 }
 
-.todo-sort {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 150px;
-}
 
-.todo-sort label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #64748b;
-}
 
 .sort-select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
   background: white;
   color: #1e293b;
   font-size: 0.875rem;
@@ -344,6 +340,34 @@
 }
 
 .sort-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sort-btn {
+  background: white;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+}
+
+.sort-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.sort-btn:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -701,15 +725,17 @@
     align-items: stretch;
   }
 
-  .todo-sort {
-    min-width: auto;
+  .todo-meta {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
   }
 
-  .sort-select {
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    font-weight: 500;
-    border-radius: 0.5rem;
+  .sort-btn {
+    padding: 0.625rem;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 }
 
@@ -750,15 +776,17 @@
     align-items: stretch;
   }
 
-  .todo-sort {
-    min-width: auto;
+  .todo-meta {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
   }
 
-  .sort-select {
-    padding: 0.875rem 1.125rem;
-    font-size: 1.0625rem;
-    font-weight: 500;
-    border-radius: 0.5rem;
+  .sort-btn {
+    padding: 0.625rem;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .lists {
