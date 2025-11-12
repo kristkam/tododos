@@ -444,6 +444,14 @@
   gap: 0.75rem;
 }
 
+/* Performance optimization for mobile dragging */
+@media (max-width: 768px) {
+  .todo-items {
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+  }
+}
+
 .todo-item {
   display: flex;
   align-items: center;
@@ -1150,4 +1158,46 @@
   margin: 0;
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* Drag and drop styles - updated for better mobile scrolling */
+.todo-item {
+  cursor: grab;
+  touch-action: manipulation;
+}
+
+.todo-item:active {
+  cursor: grabbing;
+}
+
+/* Optimize drag performance on mobile */
+@media (max-width: 768px) {
+  .todo-item {
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translate3d(0, 0, 0);
+    -webkit-perspective: 1000;
+    perspective: 1000;
+    /* Faster, more specific transition on mobile */
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  
+  /* Disable hover effects on mobile to prevent conflicts with drag */
+  .todo-item:hover {
+    transform: translate3d(0, 0, 0);
+    box-shadow: none;
+    border-color: rgba(148, 163, 184, 0.15);
+    background: rgba(248, 250, 252, 0.8);
+  }
+  
+  /* Reduce paint complexity on mobile */
+  .todo-item {
+    backdrop-filter: none;
+  }
+  
+  .todo-item:hover {
+    backdrop-filter: none;
+  }
 }

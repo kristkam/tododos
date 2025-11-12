@@ -24,6 +24,7 @@ interface FirestoreTodoList {
   items: FirestoreTodoItem[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  sortBy?: 'normal' | 'completed-top' | 'completed-bottom';
 }
 
 interface FirestoreTodoItem {
@@ -31,6 +32,7 @@ interface FirestoreTodoItem {
   text: string;
   completed: boolean;
   createdAt: Timestamp;
+  order?: number;
 }
 
 // Convert Firestore document to TodoList
@@ -45,25 +47,43 @@ const convertFirestoreToTodoList = (
       id: item.id,
       text: item.text,
       completed: item.completed,
-      createdAt: item.createdAt.toDate()
+      createdAt: item.createdAt.toDate(),
+      order: item.order
     })),
     createdAt: data.createdAt.toDate(),
-    updatedAt: data.updatedAt.toDate()
+    updatedAt: data.updatedAt.toDate(),
+    sortBy: data.sortBy
   };
 };
 
 // Convert TodoList to Firestore document
-const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoList => ({
-  name: list.name,
-  items: list.items.map((item: TodoItem) => ({
-    id: item.id,
-    text: item.text,
-    completed: item.completed,
-    createdAt: Timestamp.fromDate(item.createdAt)
-  })),
-  createdAt: Timestamp.fromDate(list.createdAt),
-  updatedAt: Timestamp.fromDate(list.updatedAt)
-});
+const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoList => {
+  const firestoreList: FirestoreTodoList = {
+    name: list.name,
+    items: list.items.map((item: TodoItem) => {
+      const firestoreItem: FirestoreTodoItem = {
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+        createdAt: Timestamp.fromDate(item.createdAt)
+      };
+      // Only add order if it exists (Firestore doesn't like undefined)
+      if (item.order !== undefined) {
+        firestoreItem.order = item.order;
+      }
+      return firestoreItem;
+    }),
+    createdAt: Timestamp.fromDate(list.createdAt),
+    updatedAt: Timestamp.fromDate(list.updatedAt)
+  };
+  
+  // Only add sortBy if it exists (Firestore doesn't like undefined)
+  if (list.sortBy !== undefined) {
+    firestoreList.sortBy = list.sortBy;
+  }
+  
+  return firestoreList;
+};
 
 // Firebase service functions
 export const firebaseService = {
@@ -111,7 +131,8 @@ export const firebaseService = {
         name: list.name,
         items: list.items,
         createdAt: list.createdAt,
-        updatedAt: new Date() // Always update the timestamp
+        updatedAt: new Date(), // Always update the timestamp
+        sortBy: list.sortBy
       });
       await updateDoc(listRef, firestoreData as Partial<FirestoreTodoList>);
     } catch (error) {

@@ -3,6 +3,7 @@ export interface TodoItem {
   text: string;
   completed: boolean;
   createdAt: Date;
+  order?: number;
 }
 
 export interface TodoList {
