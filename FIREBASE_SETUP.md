@@ -5,29 +5,25 @@ This todo application uses Firebase Firestore as its primary data storage backen
 ## Prerequisites
 
 1. Install Firebase SDK:
-   ```bash
+  ```bash
    yarn add firebase
-   ```
-
+  ```
 2. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-
 3. Enable Firestore Database in your Firebase project
 
 ## Configuration
 
 1. **Copy the environment template:**
-   ```bash
+  ```bash
    cp .env.example .env.local
-   ```
-
+  ```
 2. **Get your Firebase configuration:**
-   - Go to Project Settings in Firebase Console
-   - Scroll down to "Your apps" section
-   - Click on "Config" for your web app
-   - Copy the configuration values
-
+  - Go to Project Settings in Firebase Console
+  - Scroll down to "Your apps" section
+  - Click on "Config" for your web app
+  - Copy the configuration values
 3. **Update `.env.local` with your Firebase config:**
-   ```env
+  ```env
    VITE_FIREBASE_API_KEY=your_actual_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
    VITE_FIREBASE_PROJECT_ID=your_actual_project_id
@@ -35,7 +31,7 @@ This todo application uses Firebase Firestore as its primary data storage backen
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_actual_sender_id
    VITE_FIREBASE_APP_ID=your_actual_app_id
    VITE_FIREBASE_MEASUREMENT_ID=your_actual_measurement_id
-   ```
+  ```
 
 ## Firestore Security Rules
 
@@ -85,6 +81,7 @@ todoLists (collection)
 ## Error Handling
 
 The app includes comprehensive error handling:
+
 - Network connectivity issues
 - Firebase authentication errors
 - Firestore permission errors
@@ -114,7 +111,8 @@ For production deployment:
 
 The app now uses a simplified, Firebase-only architecture:
 
-- **`useTodoLists` hook** - Manages all data operations and real-time sync
-- **`todoStorage`** - Firebase service layer with CRUD operations
-- **`firebaseService`** - Low-level Firestore operations
+- `**useTodoLists` hook** - Manages all data operations and real-time sync
+- `**todoStorage`** - Firebase service layer with CRUD operations
+- `**firebaseService**` - Low-level Firestore operations
 - **Current list ID** - Still stored in localStorage as UI state (not data)
+

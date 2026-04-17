@@ -1,5 +1,5 @@
-import React, { useState, useTransition, useMemo, useEffect } from 'react';
-import type { TodoList as TodoListType, TodoItem as TodoItemType } from '../types';
+import React, { useEffect, useMemo, useOptimistic, useState, useTransition } from 'react';
+import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption } from '../types';
 import { SortableTodoItem } from './SortableTodoItem';
 import { SortUnsortedIcon, SortCompletedTopIcon, SortCompletedBottomIcon } from './icons';
 import {
@@ -18,22 +18,21 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { sortItems } from '../lib/sortItems';
+import { applyTodoItemsAction, type TodoItemsOptimisticAction } from '../lib/todoItemsReducer';
 
-type SortOption = 'normal' | 'completed-top' | 'completed-bottom';
-
-interface TodoListProps {
+type TodoListProps = {
   list: TodoListType;
-  onUpdateList: (list: TodoListType) => void;
-}
+  onUpdateList: (list: TodoListType) => void | Promise<void>;
+};
 
 export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   const [newItemText, setNewItemText] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>(list.sortBy || 'normal');
+  const [sortBy, setSortBy] = useState<SortOption>(list.sortBy);
   const [, startTransition] = useTransition();
-  const [items, setItems] = useState(list.items);
 
-  // Configure sensors for drag and drop
-  // PointerSensor with delay - must press and hold to start dragging
+  const [optimisticItems, addOptimisticItems] = useOptimistic(list.items, applyTodoItemsAction);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -46,188 +45,125 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     })
   );
 
-  // Update sortBy when switching between different lists
   useEffect(() => {
-    setSortBy(list.sortBy || 'normal');
+    setSortBy(list.sortBy);
   }, [list.id, list.sortBy]);
 
-  // Sync items from props when list changes
-  useEffect(() => {
-    setItems(list.items);
-  }, [list.id, list.items]);
+  const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
 
-  const cycleSortOrder = () => {
-    const nextSort: SortOption = 
-      sortBy === 'normal' ? 'completed-top' :
-      sortBy === 'completed-top' ? 'completed-bottom' :
-      'normal';
-    
+  const cycleSortOrder = (): void => {
+    const nextSort: SortOption =
+      sortBy === 'normal' ? 'completed-top' : sortBy === 'completed-top' ? 'completed-bottom' : 'normal';
+
     setSortBy(nextSort);
-    
-    // Update the list with the new sort preference
-    const updatedList = {
+
+    const updatedList: TodoListType = {
       ...list,
       sortBy: nextSort,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     startTransition(() => {
-      onUpdateList(updatedList);
+      void onUpdateList(updatedList);
     });
   };
 
-  const getSortIcon = () => {
+  const getSortIcon = (): React.ReactElement => {
     switch (sortBy) {
       case 'completed-top':
         return <SortCompletedTopIcon size={20} />;
       case 'completed-bottom':
         return <SortCompletedBottomIcon size={20} />;
       case 'normal':
-      default:
         return <SortUnsortedIcon size={20} />;
     }
   };
 
-  const getSortLabel = () => {
+  const getSortLabel = (): string => {
     switch (sortBy) {
       case 'completed-top':
         return 'Finished First';
       case 'completed-bottom':
         return 'Finished Last';
       case 'normal':
-      default:
         return 'Unsorted';
     }
   };
 
-  const addItem = () => {
-    if (newItemText.trim()) {
-      // Find the highest order value to append the new item at the end
-      const maxOrder = list.items.reduce((max, item) => {
-        const itemOrder = item.order ?? new Date(item.createdAt).getTime();
-        return Math.max(max, itemOrder);
-      }, -1);
-
-      const newItem: TodoItemType = {
-        id: crypto.randomUUID(),
-        text: newItemText.trim(),
-        completed: false,
-        createdAt: new Date(),
-        order: maxOrder + 1
-      };
-
-      const updatedList = {
+  const runItemsMutation = (action: TodoItemsOptimisticAction): void => {
+    const nextItems = applyTodoItemsAction(optimisticItems, action);
+    startTransition(() => {
+      addOptimisticItems(action);
+      void onUpdateList({
         ...list,
-        items: [...list.items, newItem],
-        updatedAt: new Date()
-      };
-
-      // Use transition to make the update non-urgent and prevent interruptions
-      startTransition(() => {
-        onUpdateList(updatedList);
+        items: nextItems,
+        updatedAt: new Date(),
       });
-      
-      setNewItemText('');
+    });
+  };
+
+  const addItem = (): void => {
+    const trimmed = newItemText.trim();
+    if (!trimmed) {
+      return;
     }
-  };
 
-  const updateItem = (updatedItem: TodoItemType) => {
-    const updatedList = {
-      ...list,
-      items: list.items.map(item => 
-        item.id === updatedItem.id ? updatedItem : item
-      ),
-      updatedAt: new Date()
+    const maxOrder = optimisticItems.reduce((max, item) => {
+      const itemOrder = item.order ?? new Date(item.createdAt).getTime();
+      return Math.max(max, itemOrder);
+    }, -1);
+
+    const newItem: TodoItemType = {
+      id: crypto.randomUUID(),
+      text: trimmed,
+      completed: false,
+      createdAt: new Date(),
+      order: maxOrder + 1,
     };
 
-    startTransition(() => {
-      onUpdateList(updatedList);
-    });
+    runItemsMutation({ type: 'add', item: newItem });
+    setNewItemText('');
   };
 
-  const deleteItem = (itemId: string) => {
-    const updatedList = {
-      ...list,
-      items: list.items.filter(item => item.id !== itemId),
-      updatedAt: new Date()
-    };
-
-    startTransition(() => {
-      onUpdateList(updatedList);
-    });
+  const updateItem = (updatedItem: TodoItemType): void => {
+    runItemsMutation({ type: 'update', item: updatedItem });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const deleteItem = (itemId: string): void => {
+    runItemsMutation({ type: 'delete', itemId });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
       addItem();
     }
   };
 
-  const handleAddClick = (e: React.MouseEvent) => {
+  const handleAddClick = (e: React.MouseEvent): void => {
     e.preventDefault();
     e.stopPropagation();
     addItem();
   };
 
-  const completedCount = items.filter(item => item.completed).length;
-  const totalCount = items.length;
+  const completedCount = optimisticItems.filter((item) => item.completed).length;
+  const totalCount = optimisticItems.length;
 
-  const sortedItems = useMemo(() => {
-    const itemsArray = [...items];
-    
-    switch (sortBy) {
-      case 'completed-top':
-        return itemsArray.sort((a, b) => {
-          if (a.completed && !b.completed) return -1;
-          if (!a.completed && b.completed) return 1;
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        });
-      
-      case 'completed-bottom':
-        return itemsArray.sort((a, b) => {
-          if (!a.completed && b.completed) return -1;
-          if (a.completed && !b.completed) return 1;
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        });
-      
-      case 'normal':
-      default:
-        // Use custom order if available, otherwise fall back to creation time
-        return itemsArray.sort((a, b) => {
-          const orderA = a.order ?? new Date(a.createdAt).getTime();
-          const orderB = b.order ?? new Date(b.createdAt).getTime();
-          return orderA - orderB;
-        });
-    }
-  }, [items, sortBy]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = sortedItems.findIndex(item => item.id === active.id);
-      const newIndex = sortedItems.findIndex(item => item.id === over.id);
+      const oldIndex = sortedItems.findIndex((item) => item.id === active.id);
+      const newIndex = sortedItems.findIndex((item) => item.id === over.id);
 
       const reorderedItems = arrayMove(sortedItems, oldIndex, newIndex);
 
-      // Assign order values to all items based on their new position
       const itemsWithOrder = reorderedItems.map((item, index) => ({
         ...item,
-        order: index
+        order: index,
       }));
 
-      // Update local state immediately to prevent jumping
-      setItems(itemsWithOrder);
-
-      const updatedList = {
-        ...list,
-        items: itemsWithOrder,
-        updatedAt: new Date()
-      };
-
-      // Update Firebase in background
-      onUpdateList(updatedList);
+      runItemsMutation({ type: 'reorder', items: itemsWithOrder });
     }
   };
 
@@ -241,6 +177,7 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
               {completedCount} of {totalCount} completed
             </div>
             <button
+              type="button"
               onClick={cycleSortOrder}
               className="sort-btn"
               title={`Currently: ${getSortLabel()}. Click to change sorting.`}
@@ -261,7 +198,7 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
           placeholder="Add a new item..."
           className="add-item-input"
         />
-        <button onClick={handleAddClick} className="add-item-btn">
+        <button type="button" onClick={handleAddClick} className="add-item-btn">
           Add
         </button>
       </div>
@@ -272,23 +209,13 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
         onDragEnd={handleDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
-        <SortableContext
-          items={sortedItems.map(item => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={sortedItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
           <div className="todo-items">
             {sortedItems.length === 0 ? (
-              <div className="empty-list">
-                No items yet. Add your first item above!
-              </div>
+              <div className="empty-list">No items yet. Add your first item above!</div>
             ) : (
-              sortedItems.map(item => (
-                <SortableTodoItem
-                  key={item.id}
-                  item={item}
-                  onUpdate={updateItem}
-                  onDelete={deleteItem}
-                />
+              sortedItems.map((item) => (
+                <SortableTodoItem key={item.id} item={item} onUpdate={updateItem} onDelete={deleteItem} />
               ))
             )}
           </div>

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import type { TodoList } from '../types';
 import { CheckIcon, CancelIcon, DeleteIcon } from './icons';
 
-interface ListSelectorProps {
+type ListSelectorProps = {
   lists: TodoList[];
   currentListId: string | null;
   onSelectList: (listId: string) => void;
-  onCreateList: (name: string) => void;
+  onCreateList: (name: string) => void | Promise<void>;
   onDeleteList: (listId: string) => void;
-}
+};
 
 export const ListSelector: React.FC<ListSelectorProps> = ({
   lists,
@@ -20,9 +20,9 @@ export const ListSelector: React.FC<ListSelectorProps> = ({
   const [newListName, setNewListName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreateList = () => {
+  const handleCreateList = async () => {
     if (newListName.trim()) {
-      onCreateList(newListName.trim());
+      await Promise.resolve(onCreateList(newListName.trim()));
       setNewListName('');
       setIsCreating(false);
     }

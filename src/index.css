@@ -1,16 +1,182 @@
+/* Design tokens — light default; dark overrides via [data-theme="dark"] on documentElement */
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-weight-body: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --color-text: #1e293b;
+  --color-text-body: #334155;
+  --color-text-muted: #64748b;
+  --color-bg: #f8fafc;
+  --color-bg-gradient-end: #e2e8f0;
+  --color-surface: rgba(255, 255, 255, 0.96);
+  --color-surface-muted: rgba(255, 255, 255, 0.82);
+  --color-surface-item: rgba(248, 250, 252, 0.88);
+  --color-surface-raised: rgba(255, 255, 255, 0.98);
+  --color-border: rgba(148, 163, 184, 0.22);
+  --color-border-strong: #cbd5e1;
+  --color-border-hover: rgba(148, 163, 184, 0.45);
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-deep: #1d4ed8;
+  --color-accent-muted: rgba(59, 130, 246, 0.1);
+  --color-success: #10b981;
+  --color-success-hover: #059669;
+  --color-success-deep: #047857;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-danger-deep: #b91c1c;
+  --color-back-btn: #64748b;
+  --color-back-btn-hover: #475569;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-accent: 0 2px 4px rgba(59, 130, 246, 0.2);
+  --shadow-success: 0 2px 4px rgba(16, 185, 129, 0.2);
+  --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  --focus-ring-success: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  --ring-accent-soft: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  --ring-success-soft: 0 0 0 3px rgba(16, 185, 129, 0.12);
+
+  --color-on-accent: #f8fafc;
+  --color-input-bg: #ffffff;
+  --color-muted-well: rgba(148, 163, 184, 0.06);
+  --color-muted-well-strong: rgba(148, 163, 184, 0.11);
+  --color-accent-fill-soft: rgba(59, 130, 246, 0.07);
+  --color-accent-fill-medium: rgba(59, 130, 246, 0.11);
+  --color-edge-accent: rgba(59, 130, 246, 0.3);
+
+  --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 8px 20px rgba(59, 130, 246, 0.1);
+  --shadow-back-btn: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-back-btn-hover: 0 2px 6px rgba(0, 0, 0, 0.14);
+
+  --color-toast-surface: rgba(255, 255, 255, 0.97);
+  --color-toast-border: rgba(148, 163, 184, 0.22);
+  --color-toast-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  --toast-success-bg: rgba(16, 185, 129, 0.08);
+  --toast-success-border: rgba(16, 185, 129, 0.32);
+  --toast-success-icon-bg: rgba(16, 185, 129, 0.14);
+  --toast-error-bg: rgba(239, 68, 68, 0.07);
+  --toast-error-border: rgba(239, 68, 68, 0.32);
+  --toast-error-icon-bg: rgba(239, 68, 68, 0.14);
+  --toast-info-bg: rgba(59, 130, 246, 0.07);
+  --toast-info-border: rgba(59, 130, 246, 0.32);
+  --toast-info-icon-bg: rgba(59, 130, 246, 0.14);
+
+  --color-modal-backdrop: rgba(15, 23, 42, 0.55);
+  --color-modal-surface: rgba(255, 255, 255, 0.98);
+  --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.14), 0 8px 16px rgba(0, 0, 0, 0.06);
+
+  --color-spinner-track: #e2e8f0;
+
+  --surface-success-soft: rgba(16, 185, 129, 0.12);
+  --surface-success-strong: rgba(16, 185, 129, 0.22);
+  --surface-danger-soft: rgba(239, 68, 68, 0.12);
+  --surface-danger-strong: rgba(239, 68, 68, 0.22);
+  --surface-accent-soft: rgba(59, 130, 246, 0.12);
+  --surface-accent-strong: rgba(59, 130, 246, 0.22);
+
+  font-family: var(--font-sans);
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light;
-  color: #1e293b;
-  background-color: #f8fafc;
-
+  font-weight: var(--font-weight-body);
+  color-scheme: light dark;
+  color: var(--color-text);
+  background-color: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scope to html so token overrides always track documentElement.dataset.theme */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-text: #f1f5f9;
+  --color-text-body: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-bg: #0b1120;
+  --color-bg-gradient-end: #1e293b;
+  --color-surface: rgba(30, 41, 59, 0.94);
+  --color-surface-muted: rgba(30, 41, 59, 0.78);
+  --color-surface-item: rgba(15, 23, 42, 0.72);
+  --color-surface-raised: rgba(51, 65, 85, 0.96);
+  --color-border: rgba(148, 163, 184, 0.2);
+  --color-border-strong: #64748b;
+  --color-border-hover: rgba(148, 163, 184, 0.5);
+  --color-accent: #60a5fa;
+  --color-accent-hover: #3b82f6;
+  --color-accent-deep: #2563eb;
+  --color-accent-muted: rgba(96, 165, 250, 0.12);
+  --color-success: #34d399;
+  --color-success-hover: #10b981;
+  --color-success-deep: #059669;
+  --color-danger: #f87171;
+  --color-danger-hover: #ef4444;
+  --color-danger-deep: #dc2626;
+  --color-back-btn: #64748b;
+  --color-back-btn-hover: #94a3b8;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-accent: 0 2px 8px rgba(37, 99, 235, 0.35);
+  --shadow-success: 0 2px 8px rgba(16, 185, 129, 0.25);
+  --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.28);
+  --focus-ring-success: 0 0 0 3px rgba(52, 211, 153, 0.22);
+  --ring-accent-soft: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  --ring-success-soft: 0 0 0 3px rgba(52, 211, 153, 0.18);
+
+  --color-on-accent: #f8fafc;
+  --color-input-bg: #1e293b;
+  --color-muted-well: rgba(148, 163, 184, 0.09);
+  --color-muted-well-strong: rgba(148, 163, 184, 0.16);
+  --color-accent-fill-soft: rgba(96, 165, 250, 0.1);
+  --color-accent-fill-medium: rgba(96, 165, 250, 0.16);
+  --color-edge-accent: rgba(96, 165, 250, 0.45);
+
+  --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-back-btn: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-back-btn-hover: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+  --color-toast-surface: rgba(30, 41, 59, 0.96);
+  --color-toast-border: rgba(148, 163, 184, 0.22);
+  --color-toast-shadow: 0 10px 36px rgba(0, 0, 0, 0.55);
+  --toast-success-bg: rgba(16, 185, 129, 0.12);
+  --toast-success-border: rgba(52, 211, 153, 0.35);
+  --toast-success-icon-bg: rgba(16, 185, 129, 0.2);
+  --toast-error-bg: rgba(239, 68, 68, 0.1);
+  --toast-error-border: rgba(248, 113, 113, 0.38);
+  --toast-error-icon-bg: rgba(239, 68, 68, 0.18);
+  --toast-info-bg: rgba(59, 130, 246, 0.12);
+  --toast-info-border: rgba(96, 165, 250, 0.38);
+  --toast-info-icon-bg: rgba(59, 130, 246, 0.18);
+
+  --color-modal-backdrop: rgba(0, 0, 0, 0.72);
+  --color-modal-surface: rgba(30, 41, 59, 0.98);
+  --shadow-modal: 0 24px 56px rgba(0, 0, 0, 0.55), 0 12px 24px rgba(0, 0, 0, 0.4);
+
+  --color-spinner-track: #334155;
+
+  --surface-success-soft: rgba(52, 211, 153, 0.14);
+  --surface-success-strong: rgba(52, 211, 153, 0.24);
+  --surface-danger-soft: rgba(248, 113, 113, 0.14);
+  --surface-danger-strong: rgba(248, 113, 113, 0.24);
+  --surface-accent-soft: rgba(96, 165, 250, 0.14);
+  --surface-accent-strong: rgba(96, 165, 250, 0.26);
 }
 
 * {
@@ -22,8 +188,8 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #1e293b;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  color: var(--color-text);
+  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-gradient-end) 100%);
 }
 
 #root {
@@ -31,8 +197,15 @@ body {
   min-height: 100vh;
 }
 
-input, textarea {
+input,
+textarea {
   font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.9;
 }
 
 button {
@@ -40,8 +213,17 @@ button {
   cursor: pointer;
 }
 
-/* Remove default button styles to let our custom styles take precedence */
 button:focus,
 button:focus-visible {
   outline: none;
+}
+
+button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }

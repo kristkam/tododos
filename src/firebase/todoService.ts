@@ -2,7 +2,7 @@ import {
   collection,
   doc,
   getDocs,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -40,10 +40,11 @@ const convertFirestoreToTodoList = (
   doc: QueryDocumentSnapshot<DocumentData>
 ): TodoList => {
   const data = doc.data() as FirestoreTodoList;
+  const rawItems = data.items ?? [];
   return {
     id: doc.id,
     name: data.name,
-    items: data.items.map((item: FirestoreTodoItem) => ({
+    items: rawItems.map((item: FirestoreTodoItem) => ({
       id: item.id,
       text: item.text,
       completed: item.completed,
@@ -52,7 +53,7 @@ const convertFirestoreToTodoList = (
     })),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
-    sortBy: data.sortBy
+    sortBy: data.sortBy ?? 'normal'
   };
 };
 
@@ -74,14 +75,10 @@ const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoLi
       return firestoreItem;
     }),
     createdAt: Timestamp.fromDate(list.createdAt),
-    updatedAt: Timestamp.fromDate(list.updatedAt)
+    updatedAt: Timestamp.fromDate(list.updatedAt),
+    sortBy: list.sortBy,
   };
-  
-  // Only add sortBy if it exists (Firestore doesn't like undefined)
-  if (list.sortBy !== undefined) {
-    firestoreList.sortBy = list.sortBy;
-  }
-  
+
   return firestoreList;
 };
 
@@ -111,12 +108,13 @@ export const firebaseService = {
     });
   },
 
-  // Create a new todo list
+  // Create a new todo list with a client-generated id so the UI can navigate immediately
   async createList(list: Omit<TodoList, 'id'>): Promise<string> {
     try {
+      const listRef = doc(collection(db, LISTS_COLLECTION));
       const firestoreData = convertTodoListToFirestore(list);
-      const docRef = await addDoc(collection(db, LISTS_COLLECTION), firestoreData);
-      return docRef.id;
+      await setDoc(listRef, firestoreData);
+      return listRef.id;
     } catch (error) {
       console.error('Error creating list in Firebase:', error);
       throw error;

@@ -159,6 +159,43 @@ export const DeleteIcon: React.FC<IconProps> = ({ size = 18, className = '', col
   </svg>
 );
 
+// Theme: sun (light)
+export const SunIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+);
+
+// Theme: moon (dark)
+export const MoonIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
 // Close Icon (for modals, toasts)
 export const CloseIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
   <svg
