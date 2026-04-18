@@ -83,11 +83,16 @@ export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
 
   const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
 
+  /** Remount SortableContext when the id set changes (add/remove), not when order changes. */
+  const sortableScopeKey = useMemo(() => [...sortedItems.map((i) => i.id)].sort().join('|'), [sortedItems]);
+
   const runItemsMutation = useCallback(
     (action: TodoItemsOptimisticAction): void => {
       const nextItems = applyTodoItemsAction(optimisticItemsRef.current, action);
+      /* Must not defer: if addOptimisticItems only runs inside startTransition, the new row can
+         mount before SortableContext's `items` includes its id (useSortable index -1 → no drag). */
+      addOptimisticItems(action);
       startTransition(() => {
-        addOptimisticItems(action);
         void onUpdateList({
           ...listRef.current,
           items: nextItems,
@@ -276,7 +281,11 @@ export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
         {sortedItems.length === 0 ? (
           <div className="empty-list">No items yet. Add your first task above!</div>
         ) : (
-          <SortableContext items={sortedItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              key={sortableScopeKey}
+              items={sortedItems.map((item) => item.id)}
+              strategy={verticalListSortingStrategy}
+            >
             <ul className="task-rows">
               {sortedItems.map((item) => (
                 <SortableTodoItem key={item.id} item={item} onUpdate={updateItem} onDelete={deleteItem} />

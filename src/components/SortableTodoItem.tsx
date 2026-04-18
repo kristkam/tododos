@@ -12,7 +12,15 @@ type SortableTodoItemProps = {
 };
 
 export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemProps): ReactElement {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: item.id,
   });
 
@@ -24,11 +32,11 @@ export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemP
     willChange: isDragging ? 'transform' : undefined,
   };
 
-  // Handle owns the drag gesture. `touch-action: none` lets dnd-kit's PointerSensor
-  // claim the gesture without fighting the swipe container's `pan-y`.
+  // Activator ref: listeners live on the handle while `setNodeRef` stays on the row (`<li>`).
   const dragHandle = (
     <button
       type="button"
+      ref={setActivatorNodeRef}
       className="drag-handle"
       aria-label={`Reorder ${item.text}`}
       {...attributes}
