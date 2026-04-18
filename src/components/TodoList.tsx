@@ -14,7 +14,6 @@ import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption } f
 import { SortableTodoItem } from './SortableTodoItem';
 import {
   CheckIcon,
-  PlusIcon,
   SortUnsortedIcon,
   SortCompletedTopIcon,
   SortCompletedBottomIcon,
@@ -245,7 +244,6 @@ export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
       </header>
 
       <form className="add-task" onSubmit={onAddTaskSubmit}>
-        <PlusIcon size={22} color="var(--color-text-muted)" />
         <input
           ref={addTaskInputRef}
           type="text"

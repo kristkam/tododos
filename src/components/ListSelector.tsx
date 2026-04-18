@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type KeyboardEvent, type ReactElement } from 'react';
 import type { TodoList } from '../types';
-import { CheckIcon, DeleteIcon, PlusIcon } from './icons';
+import { DeleteIcon } from './icons';
+
+const NEW_LIST_INPUT_ID = 'new-list-name';
 
 type ListSelectorProps = {
   lists: TodoList[];
@@ -48,23 +50,33 @@ export function ListSelector({
 
   return (
     <div className="lists-view">
-      <form className="add-list" onSubmit={onAddListSubmit}>
-        <PlusIcon size={22} color="var(--color-text-muted)" />
-        <input
-          type="text"
-          value={newListName}
-          onChange={(e) => setNewListName(e.target.value)}
-          onKeyDown={onCreateKeyDown}
-          placeholder="Add new list"
-          aria-label="Add new list"
-          enterKeyHint="done"
-          inputMode="text"
-          autoComplete="off"
-        />
-        <button type="submit" className="field-submit-btn" aria-label="Create list">
-          <CheckIcon size={18} color="currentColor" />
-        </button>
-      </form>
+      <div className="add-list-card">
+        <label htmlFor={NEW_LIST_INPUT_ID} className="add-list-card-eyebrow">
+          New list
+        </label>
+        <form className="add-list" onSubmit={onAddListSubmit} aria-label="Create a new list">
+          <input
+            id={NEW_LIST_INPUT_ID}
+            type="text"
+            value={newListName}
+            onChange={(e) => setNewListName(e.target.value)}
+            onKeyDown={onCreateKeyDown}
+            placeholder="New list…"
+            enterKeyHint="done"
+            inputMode="text"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="add-list-submit"
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
+          >
+            Add list
+          </button>
+        </form>
+      </div>
 
       <h2 className="section-label">Your lists</h2>
 

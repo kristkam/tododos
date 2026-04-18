@@ -212,14 +212,35 @@
   animation: slideInFromRight 0.35s ease-out;
 }
 
+.add-list-card {
+  margin-bottom: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  padding: 0.75rem 1rem 0.875rem;
+  box-sizing: border-box;
+}
+
+.add-list-card-eyebrow {
+  display: block;
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .add-list {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-muted);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .add-list input {
@@ -234,6 +255,35 @@
 
 .add-list input:focus {
   outline: none;
+}
+
+.add-list-submit {
+  flex-shrink: 0;
+  padding: 0.5rem 0.875rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.add-list-submit:hover {
+  background: var(--color-accent-hover);
+}
+
+.add-list-submit:active {
+  background: var(--color-accent-deep);
+}
+
+.add-list-submit:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .field-submit-btn {
