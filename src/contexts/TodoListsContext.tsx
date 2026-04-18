@@ -9,7 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import type { TodoList } from '../types';
+import type { TodoItem, TodoList } from '../types';
 import { todoStorage } from '../firebase/storageAdapter';
 import { useToast } from '../hooks/useToast';
 
@@ -17,12 +17,12 @@ export type TodoListsContextValue = {
   lists: TodoList[];
   loading: boolean;
   error: string | null;
-  createList: (name: string) => Promise<string | null>;
+  createList: (name: string, seedItems?: TodoItem[]) => Promise<string | null>;
   updateList: (list: TodoList) => Promise<boolean>;
   deleteList: (listId: string, listName: string) => Promise<boolean>;
 };
 
-const TodoListsContext = createContext<TodoListsContextValue | undefined>(undefined);
+export const TodoListsContext = createContext<TodoListsContextValue | undefined>(undefined);
 
 type TodoListsProviderProps = {
   children: ReactNode;
@@ -71,11 +71,11 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
     };
   }, []);
 
-  const createList = useCallback(async (name: string): Promise<string | null> => {
+  const createList = useCallback(async (name: string, seedItems?: TodoItem[]): Promise<string | null> => {
     try {
       const newList: Omit<TodoList, 'id'> = {
         name,
-        items: [],
+        items: seedItems ?? [],
         createdAt: new Date(),
         updatedAt: new Date(),
         sortBy: 'normal',

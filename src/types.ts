@@ -16,3 +16,18 @@ export type TodoList = {
   updatedAt: Date;
   sortBy: SortOption;
 };
+
+/** Reusable list shape without per-item completion or timestamps (not a persisted todo list). */
+export type TemplateItem = {
+  id: string;
+  text: string;
+  order?: number;
+};
+
+export type ListTemplate = {
+  id: string;
+  name: string;
+  items: TemplateItem[];
+  createdAt: Date;
+  updatedAt: Date;
+};

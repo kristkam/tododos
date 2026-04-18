@@ -2,15 +2,20 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListSelector } from '../components/ListSelector';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { TemplatePickerModal } from '../components/TemplatePickerModal';
 import { useTodoLists } from '../contexts/TodoListsContext';
+import { useTemplates } from '../contexts/TemplatesContext';
+import { materializeTemplateItems } from '../lib/templateItems';
 import { loadCurrentListIdFromStorage } from '../storage';
-import type { TodoList } from '../types';
+import type { ListTemplate, TodoList } from '../types';
 
 export function ListsRoute(): ReactElement {
   const { lists, loading, createList, deleteList } = useTodoLists();
+  const { templates, loading: templatesLoading } = useTemplates();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [listToDelete, setListToDelete] = useState<TodoList | null>(null);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   useEffect(() => {
     if (loading) {
@@ -27,6 +32,20 @@ export function ListsRoute(): ReactElement {
     if (id) {
       navigate(`/lists/${id}`);
     }
+  };
+
+  const handleCreateFromTemplate = async (
+    template: ListTemplate,
+    listName: string,
+  ): Promise<boolean> => {
+    const seedItems = materializeTemplateItems(template);
+    const id = await createList(listName, seedItems);
+    if (id) {
+      setTemplatePickerOpen(false);
+      navigate(`/lists/${id}`);
+      return true;
+    }
+    return false;
   };
 
   const handleDeleteRequest = (listId: string): void => {
@@ -70,6 +89,14 @@ export function ListsRoute(): ReactElement {
         onSelectList={(id) => navigate(`/lists/${id}`)}
         onCreateList={handleCreateList}
         onDeleteList={handleDeleteRequest}
+        onStartFromTemplate={() => setTemplatePickerOpen(true)}
+      />
+      <TemplatePickerModal
+        isOpen={templatePickerOpen}
+        templates={templates}
+        templatesLoading={templatesLoading}
+        onClose={() => setTemplatePickerOpen(false)}
+        onCreateFromTemplate={(template, listName) => handleCreateFromTemplate(template, listName)}
       />
       <ConfirmModal
         isOpen={showDeleteModal}

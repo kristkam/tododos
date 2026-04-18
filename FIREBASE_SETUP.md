@@ -46,6 +46,9 @@ service cloud.firestore {
     match /todoLists/{document=**} {
       allow read, write: if true;
     }
+    match /listTemplates/{document=**} {
+      allow read, write: if true;
+    }
   }
 }
 ```
@@ -77,6 +80,23 @@ todoLists (collection)
 │           ├── completed: boolean
 │           └── createdAt: Timestamp
 ```
+
+**List templates** (reusable starter item lists) live in a separate collection:
+
+```
+listTemplates (collection)
+├── [templateId] (document)
+│   ├── name: string
+│   ├── createdAt: Timestamp
+│   ├── updatedAt: Timestamp
+│   └── items: array
+│       └── [item]
+│           ├── id: string
+│           ├── text: string
+│           └── order: number (optional)
+```
+
+Queries use `orderBy('updatedAt', 'desc')` on both `todoLists` and `listTemplates`. Firestore may prompt you to create a composite index the first time you run the app against a new collection.
 
 ## Error Handling
 

@@ -7,6 +7,7 @@ import {
   useState,
   useTransition,
   type ReactElement,
+  type ReactNode,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
@@ -40,6 +41,8 @@ import { applyTodoItemsAction, type TodoItemsOptimisticAction } from '../lib/tod
 type TodoListProps = {
   list: TodoListType;
   onUpdateList: (list: TodoListType) => void | Promise<void>;
+  /** Optional controls shown in the header row next to sort (e.g. save as template). */
+  headerActions?: ReactNode;
 };
 
 function newTodoItemId(): string {
@@ -49,7 +52,7 @@ function newTodoItemId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
+export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): ReactElement {
   const [newItemText, setNewItemText] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>(list.sortBy);
   const [, startTransition] = useTransition();
@@ -231,15 +234,18 @@ export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
           <span className="todo-view-progress">
             {completedCount} of {totalCount} completed
           </span>
-          <button
-            type="button"
-            onClick={cycleSortOrder}
-            className="icon-btn"
-            title={`Currently: ${getSortLabel()}. Click to change sorting.`}
-            aria-label={`Sort todos. Currently ${getSortLabel()}`}
-          >
-            {getSortIcon()}
-          </button>
+          <div className="todo-view-meta-actions">
+            {headerActions}
+            <button
+              type="button"
+              onClick={cycleSortOrder}
+              className="icon-btn"
+              title={`Currently: ${getSortLabel()}. Click to change sorting.`}
+              aria-label={`Sort todos. Currently ${getSortLabel()}`}
+            >
+              {getSortIcon()}
+            </button>
+          </div>
         </div>
       </header>
 

@@ -10,6 +10,7 @@ type ListSelectorProps = {
   onSelectList: (listId: string) => void;
   onCreateList: (name: string) => void | Promise<void>;
   onDeleteList: (listId: string) => void;
+  onStartFromTemplate?: () => void;
 };
 
 function formatListUpdatedDate(date: Date): string {
@@ -26,8 +27,10 @@ export function ListSelector({
   onSelectList,
   onCreateList,
   onDeleteList,
+  onStartFromTemplate,
 }: ListSelectorProps): ReactElement {
   const [newListName, setNewListName] = useState('');
+  const canCreateList = newListName.trim().length > 0;
 
   const submitCreateList = async (): Promise<void> => {
     const trimmed = newListName.trim();
@@ -39,7 +42,9 @@ export function ListSelector({
   const onCreateKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      void submitCreateList();
+      if (canCreateList) {
+        void submitCreateList();
+      }
     }
   };
 
@@ -69,13 +74,24 @@ export function ListSelector({
           <button
             type="submit"
             className="add-list-submit"
+            disabled={!canCreateList}
             onMouseDown={(e) => {
+              if (!canCreateList) {
+                return;
+              }
               e.preventDefault();
             }}
           >
             Add list
           </button>
         </form>
+        {onStartFromTemplate ? (
+          <div className="add-list-secondary">
+            <button type="button" className="add-list-from-template" onClick={onStartFromTemplate}>
+              Start from template…
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <h2 className="section-label">Your lists</h2>

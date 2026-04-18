@@ -7,7 +7,8 @@ import { saveCurrentListIdToStorage } from '../storage';
 export function AppShell(): ReactElement {
   const location = useLocation();
   const navigate = useNavigate();
-  const showBack = location.pathname.startsWith('/lists/');
+  const showBack =
+    location.pathname.startsWith('/lists/') || location.pathname.startsWith('/templates');
 
   const goHome = (): void => {
     saveCurrentListIdToStorage(null);

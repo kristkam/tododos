@@ -2,12 +2,15 @@ import { useEffect, type ReactElement } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TodoList } from '../components/TodoList';
 import { useTodoLists } from '../contexts/TodoListsContext';
+import { useTemplates } from '../contexts/TemplatesContext';
+import { todoItemsToTemplateItems } from '../lib/templateItems';
 import { saveCurrentListIdToStorage } from '../storage';
 
 export function ListRoute(): ReactElement {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const { lists, loading, updateList } = useTodoLists();
+  const { createTemplate } = useTemplates();
 
   const list = listId ? lists.find((l) => l.id === listId) : undefined;
 
@@ -22,6 +25,16 @@ export function ListRoute(): ReactElement {
       saveCurrentListIdToStorage(null);
     }
   }, [loading, listId, list]);
+
+  const handleSaveAsTemplate = async (): Promise<void> => {
+    if (!list) {
+      return;
+    }
+    await createTemplate({
+      name: list.name,
+      items: todoItemsToTemplateItems(list.items),
+    });
+  };
 
   if (loading) {
     return (
@@ -43,5 +56,19 @@ export function ListRoute(): ReactElement {
     );
   }
 
-  return <TodoList list={list} onUpdateList={(updated) => void updateList(updated)} />;
+  return (
+    <TodoList
+      list={list}
+      onUpdateList={(updated) => void updateList(updated)}
+      headerActions={
+        <button
+          type="button"
+          className="todo-view-header-action"
+          onClick={() => void handleSaveAsTemplate()}
+        >
+          Save as template
+        </button>
+      }
+    />
+  );
 }
