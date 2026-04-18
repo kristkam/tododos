@@ -1,17 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import type { TodoItem as TodoItemType } from '../types';
-import { CheckIcon, CancelIcon, EditIcon, DeleteIcon } from './icons';
+import { DeleteIcon, EditIcon } from './icons';
+import { Checkbox } from './Checkbox';
 
-interface TodoItemProps {
+type TodoItemProps = {
   item: TodoItemType;
   onUpdate: (item: TodoItemType) => void;
-  onDelete: (id: string) => void;
-}
+  onDelete: (itemId: string) => void;
+  /** Drag handle for reorder (dnd-kit). */
+  dragHandle?: ReactNode;
+};
 
-export const TodoItem: React.FC<TodoItemProps> = ({ item, onUpdate, onDelete }) => {
+export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps): ReactElement {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditText(item.text);
+    }
+  }, [item.text, isEditing]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -20,107 +29,93 @@ export const TodoItem: React.FC<TodoItemProps> = ({ item, onUpdate, onDelete }) 
     }
   }, [isEditing]);
 
-  const handleToggleComplete = () => {
-    onUpdate({ ...item, completed: !item.completed });
-  };
-
-  const handleEdit = () => {
+  const openEdit = (): void => {
     setIsEditing(true);
     setEditText(item.text);
   };
 
-  const handleSave = () => {
-    if (editText.trim()) {
-      onUpdate({ ...item, text: editText.trim() });
+  const saveEdit = (): void => {
+    const trimmed = editText.trim();
+    if (trimmed) {
+      onUpdate({ ...item, text: trimmed });
     }
     setIsEditing(false);
+    setEditText(trimmed || item.text);
   };
 
-  const handleCancel = () => {
+  const cancelEdit = (): void => {
     setEditText(item.text);
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleEditKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSave();
+      saveEdit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      handleCancel();
+      cancelEdit();
     }
   };
 
-  const handleSaveClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleSave();
-  };
-
-  const handleCancelClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleCancel();
-  };
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleEdit();
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onDelete(item.id);
+  const handleBlur = (): void => {
+    if (!isEditing) {
+      return;
+    }
+    saveEdit();
   };
 
   return (
-    <div className={`todo-item ${item.completed ? 'completed' : ''}`}>
-      <input
-        type="checkbox"
+    <div className={`task-row ${item.completed ? 'is-completed' : ''}`}>
+      {dragHandle}
+      <Checkbox
         checked={item.completed}
-        onChange={handleToggleComplete}
-        className="todo-checkbox"
+        onChange={(completed) => onUpdate({ ...item, completed })}
+        label={item.text}
       />
-      
       {isEditing ? (
-        <div className="todo-edit">
-          <input
-            ref={inputRef}
-            type="text"
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="todo-edit-input"
-          />
-          <div className="todo-edit-actions">
-            <button onClick={handleSaveClick} className="save-btn">
-              <CheckIcon />
-            </button>
-            <button onClick={handleCancelClick} className="cancel-btn">
-              <CancelIcon />
-            </button>
-          </div>
-        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onKeyDown={handleEditKeyDown}
+          onBlur={handleBlur}
+          className="task-row-edit"
+          aria-label="Edit task text"
+          enterKeyHint="done"
+        />
       ) : (
-        <div className="todo-content">
-          <span 
-            className="todo-text"
-            onDoubleClick={handleEdit}
-          >
+        <>
+          <span className="task-row-text" onDoubleClick={openEdit}>
             {item.text}
           </span>
-          <div className="todo-actions">
-            <button onClick={handleEditClick} className="edit-btn">
-              <EditIcon />
+          <div className="task-row-actions">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`Edit ${item.text}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openEdit();
+              }}
+            >
+              <EditIcon size={18} />
             </button>
-            <button onClick={handleDeleteClick} className="delete-btn">
-              <DeleteIcon />
+            <button
+              type="button"
+              className="icon-btn icon-btn-danger"
+              aria-label={`Delete ${item.text}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item.id);
+              }}
+            >
+              <DeleteIcon size={18} />
             </button>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
-};
+}

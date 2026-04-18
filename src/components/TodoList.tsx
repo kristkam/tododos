@@ -1,7 +1,24 @@
-import React, { useEffect, useMemo, useOptimistic, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+  type ReactElement,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption } from '../types';
 import { SortableTodoItem } from './SortableTodoItem';
-import { SortUnsortedIcon, SortCompletedTopIcon, SortCompletedBottomIcon } from './icons';
+import {
+  CheckIcon,
+  PlusIcon,
+  SortUnsortedIcon,
+  SortCompletedTopIcon,
+  SortCompletedBottomIcon,
+} from './icons';
 import {
   DndContext,
   closestCenter,
@@ -26,23 +43,38 @@ type TodoListProps = {
   onUpdateList: (list: TodoListType) => void | Promise<void>;
 };
 
-export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
+function newTodoItemId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export function TodoList({ list, onUpdateList }: TodoListProps): ReactElement {
   const [newItemText, setNewItemText] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>(list.sortBy);
   const [, startTransition] = useTransition();
+  const addTaskInputRef = useRef<HTMLInputElement>(null);
+  const addTaskSubmitRef = useRef<HTMLButtonElement>(null);
 
   const [optimisticItems, addOptimisticItems] = useOptimistic(list.items, applyTodoItemsAction);
 
+  const listRef = useRef(list);
+  const optimisticItemsRef = useRef(optimisticItems);
+  listRef.current = list;
+  optimisticItemsRef.current = optimisticItems;
+
+  /* Distance (not delay): with delay, mouse users who drag the handle immediately never
+     activate the sensor; touch long-press still worked. */
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        distance: 6,
       },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   useEffect(() => {
@@ -50,6 +82,21 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   }, [list.id, list.sortBy]);
 
   const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
+
+  const runItemsMutation = useCallback(
+    (action: TodoItemsOptimisticAction): void => {
+      const nextItems = applyTodoItemsAction(optimisticItemsRef.current, action);
+      startTransition(() => {
+        addOptimisticItems(action);
+        void onUpdateList({
+          ...listRef.current,
+          items: nextItems,
+          updatedAt: new Date(),
+        });
+      });
+    },
+    [addOptimisticItems, onUpdateList, startTransition],
+  );
 
   const cycleSortOrder = (): void => {
     const nextSort: SortOption =
@@ -68,7 +115,7 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     });
   };
 
-  const getSortIcon = (): React.ReactElement => {
+  const getSortIcon = (): ReactElement => {
     switch (sortBy) {
       case 'completed-top':
         return <SortCompletedTopIcon size={20} />;
@@ -90,31 +137,20 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     }
   };
 
-  const runItemsMutation = (action: TodoItemsOptimisticAction): void => {
-    const nextItems = applyTodoItemsAction(optimisticItems, action);
-    startTransition(() => {
-      addOptimisticItems(action);
-      void onUpdateList({
-        ...list,
-        items: nextItems,
-        updatedAt: new Date(),
-      });
-    });
-  };
-
-  const addItem = (): void => {
-    const trimmed = newItemText.trim();
+  const tryCommitNewItemFromRaw = (raw: string): boolean => {
+    const trimmed = raw.trim();
     if (!trimmed) {
-      return;
+      return false;
     }
 
-    const maxOrder = optimisticItems.reduce((max, item) => {
+    const items = optimisticItemsRef.current;
+    const maxOrder = items.reduce((max, item) => {
       const itemOrder = item.order ?? new Date(item.createdAt).getTime();
       return Math.max(max, itemOrder);
     }, -1);
 
     const newItem: TodoItemType = {
-      id: crypto.randomUUID(),
+      id: newTodoItemId(),
       text: trimmed,
       completed: false,
       createdAt: new Date(),
@@ -123,6 +159,11 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
 
     runItemsMutation({ type: 'add', item: newItem });
     setNewItemText('');
+    return true;
+  };
+
+  const addItem = (): void => {
+    tryCommitNewItemFromRaw(newItemText);
   };
 
   const updateItem = (updatedItem: TodoItemType): void => {
@@ -133,17 +174,28 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
     runItemsMutation({ type: 'delete', itemId });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
+  const handleAddKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
       addItem();
     }
   };
 
-  const handleAddClick = (e: React.MouseEvent): void => {
+  const onAddTaskSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    e.stopPropagation();
     addItem();
+  };
+
+  /** iOS "Done" on the keyboard often blurs without submitting the form. */
+  const onAddTaskBlur = (): void => {
+    window.setTimeout(() => {
+      if (addTaskSubmitRef.current && document.activeElement === addTaskSubmitRef.current) {
+        return;
+      }
+      // Read live value so we do not re-commit stale text after a successful submit in the same gesture.
+      const raw = addTaskInputRef.current?.value ?? '';
+      tryCommitNewItemFromRaw(raw);
+    }, 0);
   };
 
   const completedCount = optimisticItems.filter((item) => item.completed).length;
@@ -168,40 +220,52 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
   };
 
   return (
-    <div className="todo-list">
-      <div className="todo-list-header">
-        <div className="todo-list-title">
-          <h2>{list.name}</h2>
-          <div className="todo-meta">
-            <div className="todo-stats">
-              {completedCount} of {totalCount} completed
-            </div>
-            <button
-              type="button"
-              onClick={cycleSortOrder}
-              className="sort-btn"
-              title={`Currently: ${getSortLabel()}. Click to change sorting.`}
-              aria-label={`Sort todos. Currently ${getSortLabel()}`}
-            >
-              {getSortIcon()}
-            </button>
-          </div>
+    <div className="todo-view">
+      <header className="todo-view-header">
+        <h1 className="todo-view-title">{list.name}</h1>
+        <div className="todo-view-meta">
+          <span className="todo-view-progress">
+            {completedCount} of {totalCount} completed
+          </span>
+          <button
+            type="button"
+            onClick={cycleSortOrder}
+            className="icon-btn"
+            title={`Currently: ${getSortLabel()}. Click to change sorting.`}
+            aria-label={`Sort todos. Currently ${getSortLabel()}`}
+          >
+            {getSortIcon()}
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div className="add-item">
+      <form className="add-task" onSubmit={onAddTaskSubmit}>
+        <PlusIcon size={22} color="var(--color-text-muted)" />
         <input
+          ref={addTaskInputRef}
           type="text"
           value={newItemText}
           onChange={(e) => setNewItemText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Add a new item..."
-          className="add-item-input"
+          onKeyDown={handleAddKeyDown}
+          onBlur={onAddTaskBlur}
+          placeholder="Add new task"
+          aria-label="Add new task"
+          enterKeyHint="done"
+          inputMode="text"
+          autoComplete="off"
         />
-        <button type="button" onClick={handleAddClick} className="add-item-btn">
-          Add
+        <button
+          ref={addTaskSubmitRef}
+          type="submit"
+          className="field-submit-btn"
+          aria-label="Add task"
+          onMouseDown={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <CheckIcon size={18} color="currentColor" />
         </button>
-      </div>
+      </form>
 
       <DndContext
         sensors={sensors}
@@ -209,18 +273,18 @@ export const TodoList: React.FC<TodoListProps> = ({ list, onUpdateList }) => {
         onDragEnd={handleDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
-        <SortableContext items={sortedItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-          <div className="todo-items">
-            {sortedItems.length === 0 ? (
-              <div className="empty-list">No items yet. Add your first item above!</div>
-            ) : (
-              sortedItems.map((item) => (
+        {sortedItems.length === 0 ? (
+          <div className="empty-list">No items yet. Add your first task above!</div>
+        ) : (
+          <SortableContext items={sortedItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+            <ul className="task-rows">
+              {sortedItems.map((item) => (
                 <SortableTodoItem key={item.id} item={item} onUpdate={updateItem} onDelete={deleteItem} />
-              ))
-            )}
-          </div>
-        </SortableContext>
+              ))}
+            </ul>
+          </SortableContext>
+        )}
       </DndContext>
     </div>
   );
-};
+}

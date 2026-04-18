@@ -50,17 +50,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <p>{message}</p>
         </div>
         <div className="modal-footer">
-          <button 
-            onClick={onCancel} 
+          <button
+            type="button"
+            onClick={onCancel}
             className="modal-btn cancel-btn"
             autoFocus
           >
             {cancelText}
           </button>
-          <button 
-            onClick={onConfirm} 
-            className="modal-btn confirm-btn"
-          >
+          <button type="button" onClick={onConfirm} className="modal-btn confirm-btn">
             {confirmText}
           </button>
         </div>

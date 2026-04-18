@@ -19,8 +19,8 @@ describe('TodoList', () => {
     const onUpdateList = vi.fn();
     render(<TodoList list={baseList()} onUpdateList={onUpdateList} />);
 
-    await user.type(screen.getByPlaceholderText(/add a new item/i), 'Milk');
-    await user.click(screen.getByRole('button', { name: /^Add$/ }));
+    await user.type(screen.getByPlaceholderText(/add new task/i), 'Milk');
+    await user.keyboard('{Enter}');
 
     expect(onUpdateList).toHaveBeenCalledTimes(1);
     const updated = onUpdateList.mock.calls[0][0] as TodoListModel;

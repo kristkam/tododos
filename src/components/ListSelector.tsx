@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent, type KeyboardEvent, type ReactElement } from 'react';
 import type { TodoList } from '../types';
-import { CheckIcon, CancelIcon, DeleteIcon } from './icons';
+import { CheckIcon, DeleteIcon, PlusIcon } from './icons';
 
 type ListSelectorProps = {
   lists: TodoList[];
@@ -10,120 +10,91 @@ type ListSelectorProps = {
   onDeleteList: (listId: string) => void;
 };
 
-export const ListSelector: React.FC<ListSelectorProps> = ({
+function formatListUpdatedDate(date: Date): string {
+  return new Date(date).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export function ListSelector({
   lists,
   currentListId,
   onSelectList,
   onCreateList,
-  onDeleteList
-}) => {
+  onDeleteList,
+}: ListSelectorProps): ReactElement {
   const [newListName, setNewListName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreateList = async () => {
-    if (newListName.trim()) {
-      await Promise.resolve(onCreateList(newListName.trim()));
-      setNewListName('');
-      setIsCreating(false);
-    }
+  const submitCreateList = async (): Promise<void> => {
+    const trimmed = newListName.trim();
+    if (!trimmed) return;
+    await Promise.resolve(onCreateList(trimmed));
+    setNewListName('');
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const onCreateKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleCreateList();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setNewListName('');
-      setIsCreating(false);
+      void submitCreateList();
     }
   };
 
-  const handleCreateClick = (e: React.MouseEvent) => {
+  const onAddListSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    e.stopPropagation();
-    handleCreateList();
-  };
-
-  const handleCancelClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setNewListName('');
-    setIsCreating(false);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, listId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onDeleteList(listId);
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString();
+    void submitCreateList();
   };
 
   return (
-    <div className="list-selector">
-      <div className="list-selector-header">
-        <h2>Your Lists</h2>
-        {!isCreating ? (
-          <button 
-            onClick={() => setIsCreating(true)} 
-            className="create-list-btn"
-          >
-            + New List
-          </button>
-        ) : (
-          <div className="create-list-form">
-            <input
-              type="text"
-              value={newListName}
-              onChange={(e) => setNewListName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="List name..."
-              className="create-list-input"
-              autoFocus
-            />
-            <button onClick={handleCreateClick} className="save-btn">
-              <CheckIcon />
-            </button>
-            <button onClick={handleCancelClick} className="cancel-btn">
-              <CancelIcon />
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="lists-view">
+      <form className="add-list" onSubmit={onAddListSubmit}>
+        <PlusIcon size={22} color="var(--color-text-muted)" />
+        <input
+          type="text"
+          value={newListName}
+          onChange={(e) => setNewListName(e.target.value)}
+          onKeyDown={onCreateKeyDown}
+          placeholder="Add new list"
+          aria-label="Add new list"
+          enterKeyHint="done"
+          inputMode="text"
+          autoComplete="off"
+        />
+        <button type="submit" className="field-submit-btn" aria-label="Create list">
+          <CheckIcon size={18} color="currentColor" />
+        </button>
+      </form>
 
-      <div className="lists">
-        {lists.length === 0 ? (
-          <div className="empty-lists">
-            No lists yet. Create your first list!
-          </div>
-        ) : (
-          lists.map(list => (
-            <div
-              key={list.id}
-              className={`list-item ${currentListId === list.id ? 'active' : ''}`}
-              onClick={() => onSelectList(list.id)}
-            >
-              <div className="list-info">
-                <h3>{list.name}</h3>
-                <div className="list-meta">
-                  <span className="item-count">{list.items.length} items</span>
-                  <span className="list-date">Updated {formatDate(list.updatedAt)}</span>
-                </div>
+      <h2 className="section-label">Your lists</h2>
+
+      {lists.length === 0 ? (
+        <div className="empty-lists">No lists yet. Create your first list!</div>
+      ) : (
+        <ul className="list-rows">
+          {lists.map((list) => (
+            <li key={list.id} className="list-rows-item">
+              <div className={`list-row-card ${currentListId === list.id ? 'is-active' : ''}`}>
+                <button type="button" className="list-row-main" onClick={() => onSelectList(list.id)}>
+                  <div className="list-row-title">{list.name}</div>
+                  <div className="list-row-subtitle">
+                    {list.items.length} {list.items.length === 1 ? 'item' : 'items'} · Updated{' '}
+                    {formatListUpdatedDate(list.updatedAt)}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn-danger list-row-delete"
+                  aria-label={`Delete list ${list.name}`}
+                  onClick={() => onDeleteList(list.id)}
+                >
+                  <DeleteIcon size={18} />
+                </button>
               </div>
-              <button
-                onClick={(e) => handleDeleteClick(e, list.id)}
-                className="delete-list-btn"
-                title="Delete list"
-              >
-                <DeleteIcon />
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
-};
+}

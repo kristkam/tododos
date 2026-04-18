@@ -41,9 +41,11 @@ export function ListsRoute(): ReactElement {
     if (!listToDelete) {
       return;
     }
-    await deleteList(listToDelete.id, listToDelete.name);
+    const { id, name } = listToDelete;
+    // Close immediately so a slow or flaky network does not leave the modal stuck open.
     setShowDeleteModal(false);
     setListToDelete(null);
+    await deleteList(id, name);
   };
 
   const cancelDeleteList = (): void => {

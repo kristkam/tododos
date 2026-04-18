@@ -6,6 +6,42 @@ interface IconProps {
   color?: string;
 }
 
+// Grip (drag handle): two columns of three dots
+export const GripIcon: React.FC<IconProps> = ({ size = 20, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={color}
+    className={className}
+    aria-hidden
+  >
+    <circle cx="9" cy="6" r="1.6" />
+    <circle cx="9" cy="12" r="1.6" />
+    <circle cx="9" cy="18" r="1.6" />
+    <circle cx="15" cy="6" r="1.6" />
+    <circle cx="15" cy="12" r="1.6" />
+    <circle cx="15" cy="18" r="1.6" />
+  </svg>
+);
+
+// Plus (add)
+export const PlusIcon: React.FC<IconProps> = ({ size = 20, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
 // Back Arrow Icon
 export const BackArrowIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
   <svg
