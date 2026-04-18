@@ -98,6 +98,27 @@ export const SortCompletedTopIcon: React.FC<IconProps> = ({ size = 18, className
   </svg>
 );
 
+/** Group-by view: stacked rows suggesting sections */
+export const GroupBySectionsIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M4 6h16" />
+    <path d="M4 10h10" />
+    <path d="M4 14h10" />
+    <path d="M4 18h16" />
+  </svg>
+);
+
 export const SortCompletedBottomIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
   <svg
     width={size}

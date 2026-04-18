@@ -8,7 +8,9 @@ export function AppShell(): ReactElement {
   const location = useLocation();
   const navigate = useNavigate();
   const showBack =
-    location.pathname.startsWith('/lists/') || location.pathname.startsWith('/templates');
+    location.pathname.startsWith('/lists/') ||
+    location.pathname.startsWith('/templates') ||
+    location.pathname.startsWith('/groupings');
 
   const goHome = (): void => {
     saveCurrentListIdToStorage(null);

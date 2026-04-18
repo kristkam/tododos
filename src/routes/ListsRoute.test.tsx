@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ListsRoute } from './ListsRoute';
 import { TodoListsContext, type TodoListsContextValue } from '../contexts/TodoListsContext';
 import { TemplatesContext, type TemplatesContextValue } from '../contexts/TemplatesContext';
+import { GroupingsContext, type GroupingsContextValue } from '../contexts/GroupingsContext';
 
 describe('ListsRoute', () => {
   beforeEach(() => {
@@ -39,15 +40,25 @@ describe('ListsRoute', () => {
       updateTemplate: vi.fn(),
       deleteTemplate: vi.fn(),
     };
+    const groupingsMock: GroupingsContextValue = {
+      schemes: [],
+      loading: false,
+      error: null,
+      createScheme: vi.fn(),
+      updateScheme: vi.fn(),
+      deleteScheme: vi.fn(),
+    };
 
     render(
       <MemoryRouter initialEntries={['/']}>
         <TodoListsContext.Provider value={todoMock}>
           <TemplatesContext.Provider value={templatesMock}>
-            <Routes>
-              <Route path="/" element={<ListsRoute />} />
-              <Route path="/lists/:listId" element={<div data-testid="list-detail">List</div>} />
-            </Routes>
+            <GroupingsContext.Provider value={groupingsMock}>
+              <Routes>
+                <Route path="/" element={<ListsRoute />} />
+                <Route path="/lists/:listId" element={<div data-testid="list-detail">List</div>} />
+              </Routes>
+            </GroupingsContext.Provider>
           </TemplatesContext.Provider>
         </TodoListsContext.Provider>
       </MemoryRouter>,
@@ -61,12 +72,14 @@ describe('ListsRoute', () => {
     expect(createList).toHaveBeenCalledTimes(1);
     expect(createList).toHaveBeenCalledWith(
       'Groceries',
-      expect.arrayContaining([
-        expect.objectContaining({
-          text: 'Buy milk',
-          completed: false,
-        }),
-      ]),
+      expect.objectContaining({
+        seedItems: expect.arrayContaining([
+          expect.objectContaining({
+            text: 'Buy milk',
+            completed: false,
+          }),
+        ]),
+      }),
     );
   });
 });

@@ -104,6 +104,8 @@ export function TemplatesRoute(): ReactElement {
 
         <p className="templates-view-footer">
           <Link to="/">Back to lists</Link>
+          {' · '}
+          <Link to="/groupings">Groupings</Link>
         </p>
       </div>
 

@@ -22,12 +22,14 @@ type FirestoreListTemplate = {
   items: FirestoreTemplateItem[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  groupingSchemeId?: string;
 };
 
 type FirestoreTemplateItem = {
   id: string;
   text: string;
   order?: number;
+  groupId?: string;
 };
 
 const convertFirestoreToListTemplate = (
@@ -38,31 +40,47 @@ const convertFirestoreToListTemplate = (
   return {
     id: snapshot.id,
     name: data.name,
-    items: rawItems.map((item: FirestoreTemplateItem) => ({
-      id: item.id,
-      text: item.text,
-      order: item.order,
-    })),
+    items: rawItems.map((item: FirestoreTemplateItem) => {
+      const row: TemplateItem = {
+        id: item.id,
+        text: item.text,
+        order: item.order,
+      };
+      if (item.groupId !== undefined) {
+        row.groupId = item.groupId;
+      }
+      return row;
+    }),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
+    groupingSchemeId: data.groupingSchemeId,
   };
 };
 
-const convertListTemplateToFirestore = (template: Omit<ListTemplate, 'id'>): FirestoreListTemplate => ({
-  name: template.name,
-  items: template.items.map((item: TemplateItem) => {
-    const row: FirestoreTemplateItem = {
-      id: item.id,
-      text: item.text,
-    };
-    if (item.order !== undefined) {
-      row.order = item.order;
-    }
-    return row;
-  }),
-  createdAt: Timestamp.fromDate(template.createdAt),
-  updatedAt: Timestamp.fromDate(template.updatedAt),
-});
+const convertListTemplateToFirestore = (template: Omit<ListTemplate, 'id'>): FirestoreListTemplate => {
+  const out: FirestoreListTemplate = {
+    name: template.name,
+    items: template.items.map((item: TemplateItem) => {
+      const row: FirestoreTemplateItem = {
+        id: item.id,
+        text: item.text,
+      };
+      if (item.order !== undefined) {
+        row.order = item.order;
+      }
+      if (item.groupId !== undefined) {
+        row.groupId = item.groupId;
+      }
+      return row;
+    }),
+    createdAt: Timestamp.fromDate(template.createdAt),
+    updatedAt: Timestamp.fromDate(template.updatedAt),
+  };
+  if (template.groupingSchemeId !== undefined) {
+    out.groupingSchemeId = template.groupingSchemeId;
+  }
+  return out;
+};
 
 export const templateFirebaseService = {
   async getTemplates(): Promise<ListTemplate[]> {
@@ -110,6 +128,7 @@ export const templateFirebaseService = {
         items: template.items,
         createdAt: template.createdAt,
         updatedAt: new Date(),
+        groupingSchemeId: template.groupingSchemeId,
       });
       await updateDoc(templateRef, firestoreData as Partial<FirestoreListTemplate>);
     } catch (error) {

@@ -1,27 +1,37 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
-import type { ListTemplate } from '../types';
+import type { GroupingScheme, ListTemplate } from '../types';
 
 const NEW_LIST_NAME_INPUT_ID = 'template-picker-list-name';
+const OPTIONAL_GROUPING_ID = 'template-picker-optional-grouping';
 
 export type TemplatePickerModalProps = {
   isOpen: boolean;
   templates: ListTemplate[];
   templatesLoading: boolean;
+  groupingSchemes: GroupingScheme[];
+  groupingsLoading: boolean;
   onClose: () => void;
   /** Return whether the list was created (parent may close the modal on true). */
-  onCreateFromTemplate: (template: ListTemplate, listName: string) => boolean | Promise<boolean>;
+  onCreateFromTemplate: (
+    template: ListTemplate,
+    listName: string,
+    options?: { groupingSchemeId?: string },
+  ) => boolean | Promise<boolean>;
 };
 
 export function TemplatePickerModal({
   isOpen,
   templates,
   templatesLoading,
+  groupingSchemes,
+  groupingsLoading,
   onClose,
   onCreateFromTemplate,
 }: TemplatePickerModalProps): ReactElement | null {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [listName, setListName] = useState('');
+  const [optionalGroupingId, setOptionalGroupingId] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -29,6 +39,7 @@ export function TemplatePickerModal({
     }
     setSelectedId(null);
     setListName('');
+    setOptionalGroupingId('');
   }, [isOpen]);
 
   useEffect(() => {
@@ -62,6 +73,7 @@ export function TemplatePickerModal({
   }
 
   const selected = selectedId ? templates.find((t) => t.id === selectedId) : undefined;
+  const templateHasGrouping = Boolean(selected?.groupingSchemeId);
   const canCreateList =
     !templatesLoading && templates.length > 0 && Boolean(selectedId) && listName.trim().length > 0;
 
@@ -77,8 +89,16 @@ export function TemplatePickerModal({
     if (!selected || !trimmed) {
       return;
     }
-    await Promise.resolve(onCreateFromTemplate(selected, trimmed));
+    const opts =
+      !templateHasGrouping && optionalGroupingId.trim()
+        ? { groupingSchemeId: optionalGroupingId.trim() }
+        : undefined;
+    await Promise.resolve(onCreateFromTemplate(selected, trimmed, opts));
   };
+
+  const inheritedSchemeName = selected?.groupingSchemeId
+    ? groupingSchemes.find((s) => s.id === selected.groupingSchemeId)?.name
+    : undefined;
 
   return (
     <div className="modal-backdrop" onClick={handleBackdropClick} role="presentation">
@@ -122,6 +142,32 @@ export function TemplatePickerModal({
                 ))}
               </select>
 
+              {templateHasGrouping ? (
+                <p className="template-picker-inherited-grouping" role="status">
+                  Grouped by: {inheritedSchemeName ?? 'Unknown scheme'}
+                </p>
+              ) : (
+                <>
+                  <label className="template-picker-label" htmlFor={OPTIONAL_GROUPING_ID}>
+                    Grouping (optional)
+                  </label>
+                  <select
+                    id={OPTIONAL_GROUPING_ID}
+                    className="template-picker-select"
+                    value={optionalGroupingId}
+                    onChange={(e) => setOptionalGroupingId(e.target.value)}
+                    disabled={groupingsLoading || groupingSchemes.length === 0}
+                  >
+                    <option value="">None</option>
+                    {groupingSchemes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+
               <label className="template-picker-label" htmlFor={NEW_LIST_NAME_INPUT_ID}>
                 New list name
               </label>
@@ -138,9 +184,14 @@ export function TemplatePickerModal({
           )}
         </div>
         <div className="modal-footer template-picker-footer">
-          <Link to="/templates" className="template-picker-templates-link" onClick={onClose}>
-            Manage templates
-          </Link>
+          <div className="template-picker-footer-links">
+            <Link to="/templates" className="template-picker-templates-link" onClick={onClose}>
+              Manage templates
+            </Link>
+            <Link to="/groupings" className="template-picker-templates-link" onClick={onClose}>
+              Manage groupings
+            </Link>
+          </div>
           <div className="template-picker-footer-buttons">
             <button type="button" onClick={onClose} className="modal-btn cancel-btn">
               Cancel

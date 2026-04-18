@@ -2,16 +2,24 @@ import type { CSSProperties, ReactElement } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { TodoItem as TodoItemType } from '../types';
-import { TodoItem } from './TodoItem';
+import { TodoItem, type TodoItemGroupOption } from './TodoItem';
 import { GripIcon } from './icons';
 
 type SortableTodoItemProps = {
   item: TodoItemType;
   onUpdate: (item: TodoItemType) => void;
   onDelete: (itemId: string) => void;
+  groupOptions?: readonly TodoItemGroupOption[];
+  groupPickerDisabled?: boolean;
 };
 
-export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemProps): ReactElement {
+export function SortableTodoItem({
+  item,
+  onUpdate,
+  onDelete,
+  groupOptions,
+  groupPickerDisabled,
+}: SortableTodoItemProps): ReactElement {
   const {
     attributes,
     listeners,
@@ -32,7 +40,6 @@ export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemP
     willChange: isDragging ? 'transform' : undefined,
   };
 
-  // Activator ref: listeners live on the handle while `setNodeRef` stays on the row (`<li>`).
   const dragHandle = (
     <button
       type="button"
@@ -48,7 +55,14 @@ export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemP
 
   return (
     <li ref={setNodeRef} style={style} className="sortable-task-row">
-      <TodoItem item={item} onUpdate={onUpdate} onDelete={onDelete} dragHandle={dragHandle} />
+      <TodoItem
+        item={item}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        dragHandle={dragHandle}
+        groupOptions={groupOptions}
+        groupPickerDisabled={groupPickerDisabled}
+      />
     </li>
   );
 }

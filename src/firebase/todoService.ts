@@ -10,21 +10,21 @@ import {
   onSnapshot,
   Timestamp,
   type DocumentData,
-  type QueryDocumentSnapshot
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { TodoList, TodoItem } from '../types';
 
-// Collection name for todo lists
 const LISTS_COLLECTION = 'todoLists';
 
-// Type for Firestore document
 interface FirestoreTodoList {
   name: string;
   items: FirestoreTodoItem[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   sortBy?: 'normal' | 'completed-top' | 'completed-bottom';
+  groupingSchemeId?: string;
+  groupBy?: boolean;
 }
 
 interface FirestoreTodoItem {
@@ -33,31 +33,36 @@ interface FirestoreTodoItem {
   completed: boolean;
   createdAt: Timestamp;
   order?: number;
+  groupId?: string;
 }
 
-// Convert Firestore document to TodoList
-const convertFirestoreToTodoList = (
-  doc: QueryDocumentSnapshot<DocumentData>
-): TodoList => {
-  const data = doc.data() as FirestoreTodoList;
+const convertFirestoreToTodoList = (docSnap: QueryDocumentSnapshot<DocumentData>): TodoList => {
+  const data = docSnap.data() as FirestoreTodoList;
   const rawItems = data.items ?? [];
   return {
-    id: doc.id,
+    id: docSnap.id,
     name: data.name,
-    items: rawItems.map((item: FirestoreTodoItem) => ({
-      id: item.id,
-      text: item.text,
-      completed: item.completed,
-      createdAt: item.createdAt.toDate(),
-      order: item.order
-    })),
+    items: rawItems.map((item: FirestoreTodoItem) => {
+      const row: TodoItem = {
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+        createdAt: item.createdAt.toDate(),
+        order: item.order,
+      };
+      if (item.groupId !== undefined) {
+        row.groupId = item.groupId;
+      }
+      return row;
+    }),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
-    sortBy: data.sortBy ?? 'normal'
+    sortBy: data.sortBy ?? 'normal',
+    groupingSchemeId: data.groupingSchemeId,
+    groupBy: data.groupBy ?? false,
   };
 };
 
-// Convert TodoList to Firestore document
 const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoList => {
   const firestoreList: FirestoreTodoList = {
     name: list.name,
@@ -66,25 +71,28 @@ const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoLi
         id: item.id,
         text: item.text,
         completed: item.completed,
-        createdAt: Timestamp.fromDate(item.createdAt)
+        createdAt: Timestamp.fromDate(item.createdAt),
       };
-      // Only add order if it exists (Firestore doesn't like undefined)
       if (item.order !== undefined) {
         firestoreItem.order = item.order;
+      }
+      if (item.groupId !== undefined) {
+        firestoreItem.groupId = item.groupId;
       }
       return firestoreItem;
     }),
     createdAt: Timestamp.fromDate(list.createdAt),
     updatedAt: Timestamp.fromDate(list.updatedAt),
     sortBy: list.sortBy,
+    groupBy: list.groupBy,
   };
-
+  if (list.groupingSchemeId !== undefined) {
+    firestoreList.groupingSchemeId = list.groupingSchemeId;
+  }
   return firestoreList;
 };
 
-// Firebase service functions
 export const firebaseService = {
-  // Get all todo lists
   async getLists(): Promise<TodoList[]> {
     try {
       const q = query(collection(db, LISTS_COLLECTION), orderBy('updatedAt', 'desc'));
@@ -96,19 +104,21 @@ export const firebaseService = {
     }
   },
 
-  // Subscribe to real-time updates of all lists
   subscribeToLists(callback: (lists: TodoList[]) => void): () => void {
     const q = query(collection(db, LISTS_COLLECTION), orderBy('updatedAt', 'desc'));
-    
-    return onSnapshot(q, (querySnapshot) => {
-      const lists = querySnapshot.docs.map(convertFirestoreToTodoList);
-      callback(lists);
-    }, (error) => {
-      console.error('Error in Firebase subscription:', error);
-    });
+
+    return onSnapshot(
+      q,
+      (querySnapshot) => {
+        const lists = querySnapshot.docs.map(convertFirestoreToTodoList);
+        callback(lists);
+      },
+      (error) => {
+        console.error('Error in Firebase subscription:', error);
+      },
+    );
   },
 
-  // Create a new todo list with a client-generated id so the UI can navigate immediately
   async createList(list: Omit<TodoList, 'id'>): Promise<string> {
     try {
       const listRef = doc(collection(db, LISTS_COLLECTION));
@@ -121,7 +131,6 @@ export const firebaseService = {
     }
   },
 
-  // Update an existing todo list
   async updateList(list: TodoList): Promise<void> {
     try {
       const listRef = doc(db, LISTS_COLLECTION, list.id);
@@ -129,8 +138,10 @@ export const firebaseService = {
         name: list.name,
         items: list.items,
         createdAt: list.createdAt,
-        updatedAt: new Date(), // Always update the timestamp
-        sortBy: list.sortBy
+        updatedAt: new Date(),
+        sortBy: list.sortBy,
+        groupingSchemeId: list.groupingSchemeId,
+        groupBy: list.groupBy,
       });
       await updateDoc(listRef, firestoreData as Partial<FirestoreTodoList>);
     } catch (error) {
@@ -139,7 +150,6 @@ export const firebaseService = {
     }
   },
 
-  // Delete a todo list
   async deleteList(listId: string): Promise<void> {
     try {
       const listRef = doc(db, LISTS_COLLECTION, listId);
@@ -148,5 +158,5 @@ export const firebaseService = {
       console.error('Error deleting list from Firebase:', error);
       throw error;
     }
-  }
+  },
 };

@@ -49,6 +49,9 @@ service cloud.firestore {
     match /listTemplates/{document=**} {
       allow read, write: if true;
     }
+    match /groupingSchemes/{document=**} {
+      allow read, write: if true;
+    }
   }
 }
 ```
@@ -96,7 +99,21 @@ listTemplates (collection)
 │           └── order: number (optional)
 ```
 
-Queries use `orderBy('updatedAt', 'desc')` on both `todoLists` and `listTemplates`. Firestore may prompt you to create a composite index the first time you run the app against a new collection.
+**Grouping schemes** (named groups for lists/templates) live in `groupingSchemes`:
+
+```
+groupingSchemes (collection)
+├── [schemeId] (document)
+│   ├── name: string
+│   ├── groups: array of { id: string, name: string }
+│   ├── defaultGroupId: string
+│   ├── createdAt: Timestamp
+│   └── updatedAt: Timestamp
+```
+
+Lists and templates may reference a scheme via `groupingSchemeId`; list documents also persist `groupBy` (boolean) and each todo item may include `groupId`.
+
+Queries use `orderBy('updatedAt', 'desc')` on `todoLists`, `listTemplates`, and `groupingSchemes`. Firestore may prompt you to create a composite index the first time you run the app against a new collection.
 
 ## Error Handling
 
@@ -133,6 +150,6 @@ The app now uses a simplified, Firebase-only architecture:
 
 - `**useTodoLists` hook** - Manages all data operations and real-time sync
 - `**todoStorage`** - Firebase service layer with CRUD operations
-- `**firebaseService**` - Low-level Firestore operations
+- `**firebaseService`** - Low-level Firestore operations
 - **Current list ID** - Still stored in localStorage as UI state (not data)
 

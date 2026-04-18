@@ -9,15 +9,22 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import type { TodoItem, TodoList } from '../types';
+import type { GroupingScheme, TodoItem, TodoList } from '../types';
 import { todoStorage } from '../firebase/storageAdapter';
+import { groupingStorage } from '../firebase/groupingStorageAdapter';
 import { useToast } from '../hooks/useToast';
+import { normalizeTodoLists } from '../lib/normalizeGroupingForLists';
+
+export type CreateListOptions = {
+  seedItems?: TodoItem[];
+  groupingSchemeId?: string;
+};
 
 export type TodoListsContextValue = {
   lists: TodoList[];
   loading: boolean;
   error: string | null;
-  createList: (name: string, seedItems?: TodoItem[]) => Promise<string | null>;
+  createList: (name: string, options?: CreateListOptions) => Promise<string | null>;
   updateList: (list: TodoList) => Promise<boolean>;
   deleteList: (listId: string, listName: string) => Promise<boolean>;
 };
@@ -34,22 +41,44 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
   const showToastRef = useRef(showToast);
+  const rawListsRef = useRef<TodoList[]>([]);
+  const schemesRef = useRef<GroupingScheme[]>([]);
+  const listsRef = useRef<TodoList[]>([]);
 
   useEffect(() => {
     showToastRef.current = showToast;
   }, [showToast]);
 
   useEffect(() => {
-    const unsubscribe = todoStorage.subscribeToLists((updatedLists) => {
-      setLists(updatedLists);
+    listsRef.current = lists;
+  }, [lists]);
+
+  const applyNormalization = useCallback((): void => {
+    setLists(normalizeTodoLists(rawListsRef.current, schemesRef.current));
+  }, []);
+
+  useEffect(() => {
+    const unsubLists = todoStorage.subscribeToLists((updatedLists) => {
+      rawListsRef.current = updatedLists;
+      applyNormalization();
       setLoading(false);
       setError(null);
     });
 
-    const loadFallback = async () => {
+    const unsubSchemes = groupingStorage.subscribeToSchemes((updatedSchemes) => {
+      schemesRef.current = updatedSchemes;
+      applyNormalization();
+    });
+
+    const loadFallback = async (): Promise<void> => {
       try {
-        const initialLists = await todoStorage.loadLists();
-        setLists(initialLists);
+        const [initialLists, initialSchemes] = await Promise.all([
+          todoStorage.loadLists(),
+          groupingStorage.loadSchemes(),
+        ]);
+        rawListsRef.current = initialLists;
+        schemesRef.current = initialSchemes;
+        setLists(normalizeTodoLists(initialLists, initialSchemes));
         setLoading(false);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load lists';
@@ -60,25 +89,49 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
       }
     };
 
-    if (!unsubscribe) {
+    if (!unsubLists) {
+      void loadFallback();
+    } else if (!unsubSchemes) {
       void loadFallback();
     }
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (unsubLists) {
+        unsubLists();
+      }
+      if (unsubSchemes) {
+        unsubSchemes();
       }
     };
-  }, []);
+  }, [applyNormalization]);
 
-  const createList = useCallback(async (name: string, seedItems?: TodoItem[]): Promise<string | null> => {
+  const createList = useCallback(async (name: string, options?: CreateListOptions): Promise<string | null> => {
+    const schemeId = options?.groupingSchemeId;
+    const scheme = schemeId ? schemesRef.current.find((s) => s.id === schemeId) : undefined;
+    if (schemeId && !scheme) {
+      showToastRef.current('That grouping scheme is not available. Try again after it loads.', 'error');
+      return null;
+    }
+
+    let items = options?.seedItems ?? [];
+    if (scheme) {
+      const ids = new Set(scheme.groups.map((g) => g.id));
+      items = items.map((item) => ({
+        ...item,
+        groupId:
+          item.groupId !== undefined && ids.has(item.groupId) ? item.groupId : scheme.defaultGroupId,
+      }));
+    }
+
     try {
       const newList: Omit<TodoList, 'id'> = {
         name,
-        items: seedItems ?? [],
+        items,
         createdAt: new Date(),
         updatedAt: new Date(),
         sortBy: 'normal',
+        groupingSchemeId: schemeId,
+        groupBy: false,
       };
 
       const listId = await todoStorage.createList(newList);
@@ -93,13 +146,18 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
   }, []);
 
   const updateList = useCallback(async (list: TodoList): Promise<boolean> => {
+    const stored = listsRef.current.find((l) => l.id === list.id);
+    const storedSchemeId = stored?.groupingSchemeId;
+    const listAlreadyHasScheme = Boolean(storedSchemeId && String(storedSchemeId).length > 0);
+    /** Assign-once: lists created without a scheme may set `groupingSchemeId` once; afterward it is locked. */
+    const mergedGroupingSchemeId = listAlreadyHasScheme ? storedSchemeId : list.groupingSchemeId;
+    const merged: TodoList = {
+      ...list,
+      groupingSchemeId: mergedGroupingSchemeId,
+      updatedAt: new Date(),
+    };
     try {
-      const updatedList: TodoList = {
-        ...list,
-        updatedAt: new Date(),
-      };
-
-      await todoStorage.updateList(updatedList);
+      await todoStorage.updateList(merged);
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update list';
@@ -131,7 +189,7 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
       updateList,
       deleteList,
     }),
-    [lists, loading, error, createList, updateList, deleteList]
+    [lists, loading, error, createList, updateList, deleteList],
   );
 
   return <TodoListsContext.Provider value={value}>{children}</TodoListsContext.Provider>;

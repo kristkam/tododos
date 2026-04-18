@@ -1,14 +1,18 @@
 import { useState, type FormEvent, type KeyboardEvent, type ReactElement } from 'react';
-import type { TodoList } from '../types';
+import { Link } from 'react-router-dom';
+import type { GroupingScheme, TodoList } from '../types';
 import { DeleteIcon } from './icons';
 
 const NEW_LIST_INPUT_ID = 'new-list-name';
+const NEW_LIST_GROUPING_ID = 'new-list-grouping';
 
 type ListSelectorProps = {
   lists: TodoList[];
   currentListId: string | null;
+  groupingSchemes: GroupingScheme[];
+  groupingsLoading: boolean;
   onSelectList: (listId: string) => void;
-  onCreateList: (name: string) => void | Promise<void>;
+  onCreateList: (name: string, options?: { groupingSchemeId?: string }) => void | Promise<void>;
   onDeleteList: (listId: string) => void;
   onStartFromTemplate?: () => void;
 };
@@ -24,19 +28,26 @@ function formatListUpdatedDate(date: Date): string {
 export function ListSelector({
   lists,
   currentListId,
+  groupingSchemes,
+  groupingsLoading,
   onSelectList,
   onCreateList,
   onDeleteList,
   onStartFromTemplate,
 }: ListSelectorProps): ReactElement {
   const [newListName, setNewListName] = useState('');
+  const [newListGroupingId, setNewListGroupingId] = useState('');
   const canCreateList = newListName.trim().length > 0;
 
   const submitCreateList = async (): Promise<void> => {
     const trimmed = newListName.trim();
     if (!trimmed) return;
-    await Promise.resolve(onCreateList(trimmed));
+    const schemeId = newListGroupingId.trim() || undefined;
+    await Promise.resolve(
+      onCreateList(trimmed, schemeId ? { groupingSchemeId: schemeId } : undefined),
+    );
     setNewListName('');
+    setNewListGroupingId('');
   };
 
   const onCreateKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
@@ -85,13 +96,39 @@ export function ListSelector({
             Add list
           </button>
         </form>
-        {onStartFromTemplate ? (
-          <div className="add-list-secondary">
-            <button type="button" className="add-list-from-template" onClick={onStartFromTemplate}>
-              Start from template…
-            </button>
-          </div>
-        ) : null}
+        <div className="add-list-grouping-row">
+          <label htmlFor={NEW_LIST_GROUPING_ID} className="add-list-grouping-label">
+            Grouping (optional)
+          </label>
+          <select
+            id={NEW_LIST_GROUPING_ID}
+            className="add-list-grouping-select"
+            value={newListGroupingId}
+            onChange={(e) => setNewListGroupingId(e.target.value)}
+            disabled={groupingsLoading || groupingSchemes.length === 0}
+            aria-busy={groupingsLoading}
+          >
+            <option value="">None</option>
+            {groupingSchemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="add-list-secondary add-list-links">
+          <Link to="/groupings">Manage groupings</Link>
+          {onStartFromTemplate ? (
+            <>
+              <span className="add-list-links-sep" aria-hidden>
+                ·
+              </span>
+              <button type="button" className="add-list-from-template" onClick={onStartFromTemplate}>
+                Start from template…
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <h2 className="section-label">Your lists</h2>

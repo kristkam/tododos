@@ -33,6 +33,7 @@ export function ListRoute(): ReactElement {
     await createTemplate({
       name: list.name,
       items: todoItemsToTemplateItems(list.items),
+      groupingSchemeId: list.groupingSchemeId,
     });
   };
 

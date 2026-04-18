@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -11,17 +12,20 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption } from '../types';
+import { Link } from 'react-router-dom';
+import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption, GroupingScheme } from '../types';
 import { SortableTodoItem } from './SortableTodoItem';
 import {
   CheckIcon,
   SortUnsortedIcon,
   SortCompletedTopIcon,
   SortCompletedBottomIcon,
+  GroupBySectionsIcon,
 } from './icons';
 import {
   DndContext,
   closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -37,6 +41,10 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { sortItems } from '../lib/sortItems';
 import { applyTodoItemsAction, type TodoItemsOptimisticAction } from '../lib/todoItemsReducer';
+import { useGroupings } from '../contexts/GroupingsContext';
+import { groupItems } from '../lib/groupItems';
+import { applyGroupedDragReorder } from '../lib/applyGroupedDragReorder';
+import type { TodoItemGroupOption } from './TodoItem';
 
 type TodoListProps = {
   list: TodoListType;
@@ -52,9 +60,14 @@ function newTodoItemId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+const ATTACH_SCHEME_SELECT_ID = 'todo-list-attach-scheme';
+
 export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): ReactElement {
+  const { schemes, loading: schemesLoading } = useGroupings();
   const [newItemText, setNewItemText] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>(list.sortBy);
+  const [groupByView, setGroupByView] = useState(list.groupBy);
+  const [attachSchemeDraftId, setAttachSchemeDraftId] = useState('');
   const [, startTransition] = useTransition();
   const addTaskInputRef = useRef<HTMLInputElement>(null);
   const addTaskSubmitRef = useRef<HTMLButtonElement>(null);
@@ -66,8 +79,19 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   listRef.current = list;
   optimisticItemsRef.current = optimisticItems;
 
-  /* Distance (not delay): with delay, mouse users who drag the handle immediately never
-     activate the sensor; touch long-press still worked. */
+  const scheme: GroupingScheme | undefined = useMemo(() => {
+    if (!list.groupingSchemeId) {
+      return undefined;
+    }
+    return schemes.find((s) => s.id === list.groupingSchemeId);
+  }, [list.groupingSchemeId, schemes]);
+
+  const schemeMissing = Boolean(list.groupingSchemeId) && !scheme;
+  const groupOptions: readonly TodoItemGroupOption[] | undefined = useMemo(
+    () => (scheme ? scheme.groups.map((g) => ({ id: g.id, name: g.name })) : undefined),
+    [scheme],
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -83,16 +107,30 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     setSortBy(list.sortBy);
   }, [list.id, list.sortBy]);
 
+  useEffect(() => {
+    setGroupByView(list.groupBy);
+  }, [list.id, list.groupBy]);
+
+  useEffect(() => {
+    if (list.groupingSchemeId) {
+      setAttachSchemeDraftId('');
+    }
+  }, [list.groupingSchemeId, list.id]);
+
   const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
 
-  /** Remount SortableContext when the id set changes (add/remove), not when order changes. */
+  const groupedSections = useMemo(() => {
+    if (!scheme || !groupByView || schemeMissing) {
+      return null;
+    }
+    return groupItems(sortedItems, scheme);
+  }, [groupByView, scheme, schemeMissing, sortedItems]);
+
   const sortableScopeKey = useMemo(() => [...sortedItems.map((i) => i.id)].sort().join('|'), [sortedItems]);
 
   const runItemsMutation = useCallback(
     (action: TodoItemsOptimisticAction): void => {
       const nextItems = applyTodoItemsAction(optimisticItemsRef.current, action);
-      /* Must not defer: if addOptimisticItems only runs inside startTransition, the new row can
-         mount before SortableContext's `items` includes its id (useSortable index -1 → no drag). */
       addOptimisticItems(action);
       startTransition(() => {
         void onUpdateList({
@@ -119,6 +157,42 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
     startTransition(() => {
       void onUpdateList(updatedList);
+    });
+  };
+
+  const applyAttachedScheme = (): void => {
+    const sid = attachSchemeDraftId.trim();
+    const sc = schemes.find((s) => s.id === sid);
+    if (!sc) {
+      return;
+    }
+    const nextItems = optimisticItemsRef.current.map((item) => ({
+      ...item,
+      groupId: sc.defaultGroupId,
+    }));
+    startTransition(() => {
+      void onUpdateList({
+        ...listRef.current,
+        groupingSchemeId: sc.id,
+        items: nextItems,
+        updatedAt: new Date(),
+      });
+    });
+    setAttachSchemeDraftId('');
+  };
+
+  const toggleGroupByView = (): void => {
+    if (!list.groupingSchemeId || schemeMissing) {
+      return;
+    }
+    const next = !groupByView;
+    setGroupByView(next);
+    startTransition(() => {
+      void onUpdateList({
+        ...listRef.current,
+        groupBy: next,
+        updatedAt: new Date(),
+      });
     });
   };
 
@@ -162,6 +236,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
       completed: false,
       createdAt: new Date(),
       order: maxOrder + 1,
+      ...(scheme && !schemeMissing ? { groupId: scheme.defaultGroupId } : {}),
     };
 
     runItemsMutation({ type: 'add', item: newItem });
@@ -193,13 +268,11 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     addItem();
   };
 
-  /** iOS "Done" on the keyboard often blurs without submitting the form. */
   const onAddTaskBlur = (): void => {
     window.setTimeout(() => {
       if (addTaskSubmitRef.current && document.activeElement === addTaskSubmitRef.current) {
         return;
       }
-      // Read live value so we do not re-commit stale text after a successful submit in the same gesture.
       const raw = addTaskInputRef.current?.value ?? '';
       tryCommitNewItemFromRaw(raw);
     }, 0);
@@ -208,14 +281,14 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   const completedCount = optimisticItems.filter((item) => item.completed).length;
   const totalCount = optimisticItems.length;
 
-  const handleDragEnd = (event: DragEndEvent): void => {
+  const handleFlatDragEnd = (event: DragEndEvent, sorted: readonly TodoItemType[]): void => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = sortedItems.findIndex((item) => item.id === active.id);
-      const newIndex = sortedItems.findIndex((item) => item.id === over.id);
+      const oldIndex = sorted.findIndex((item) => item.id === active.id);
+      const newIndex = sorted.findIndex((item) => item.id === over.id);
 
-      const reorderedItems = arrayMove(sortedItems, oldIndex, newIndex);
+      const reorderedItems = arrayMove([...sorted], oldIndex, newIndex);
 
       const itemsWithOrder = reorderedItems.map((item, index) => ({
         ...item,
@@ -225,6 +298,39 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
       runItemsMutation({ type: 'reorder', items: itemsWithOrder });
     }
   };
+
+  const handleGroupedDragEnd = (event: DragEndEvent, sectionsInput: ReturnType<typeof groupItems>): void => {
+    const { active, over } = event;
+    if (!over || !scheme) {
+      return;
+    }
+    const nextItems = applyGroupedDragReorder(sectionsInput, String(active.id), String(over.id));
+    if (!nextItems) {
+      return;
+    }
+    runItemsMutation({ type: 'reorder', items: nextItems });
+  };
+
+  const onDragEnd = (event: DragEndEvent): void => {
+    const sorted = sortItems(optimisticItemsRef.current, sortBy);
+    if (groupByView && scheme && !schemeMissing) {
+      handleGroupedDragEnd(event, groupItems(sorted, scheme));
+      return;
+    }
+    handleFlatDragEnd(event, sorted);
+  };
+
+  const groupedDragCollision =
+    Boolean(groupByView && scheme && !schemeMissing) && groupedSections !== null;
+
+  const groupByDisabled = !list.groupingSchemeId || schemeMissing;
+  const groupByTitle = groupByDisabled
+    ? schemeMissing
+      ? 'Grouping scheme unavailable'
+      : 'This list has no grouping scheme'
+    : groupByView
+      ? 'Grouped view on. Click to show a flat list.'
+      : 'Grouped view off. Click to organize by group.';
 
   return (
     <div className="todo-view">
@@ -238,6 +344,17 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
             {headerActions}
             <button
               type="button"
+              onClick={toggleGroupByView}
+              className="icon-btn"
+              disabled={groupByDisabled}
+              title={groupByTitle}
+              aria-label={`Group by sections. ${groupByView ? 'On' : 'Off'}`}
+              aria-pressed={groupByView}
+            >
+              <GroupBySectionsIcon size={20} />
+            </button>
+            <button
+              type="button"
               onClick={cycleSortOrder}
               className="icon-btn"
               title={`Currently: ${getSortLabel()}. Click to change sorting.`}
@@ -247,7 +364,50 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
             </button>
           </div>
         </div>
+
+        {!list.groupingSchemeId ? (
+          <div className="todo-view-attach-grouping">
+            <label htmlFor={ATTACH_SCHEME_SELECT_ID} className="todo-view-attach-grouping-label">
+              Add grouping
+            </label>
+            <select
+              id={ATTACH_SCHEME_SELECT_ID}
+              className="todo-view-attach-grouping-select"
+              value={attachSchemeDraftId}
+              onChange={(e) => setAttachSchemeDraftId(e.target.value)}
+              disabled={schemesLoading || schemes.length === 0}
+              aria-busy={schemesLoading}
+            >
+              <option value="">Choose a grouping…</option>
+              {schemes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="todo-view-attach-grouping-apply"
+              disabled={!attachSchemeDraftId || schemesLoading}
+              onClick={() => applyAttachedScheme()}
+            >
+              Apply
+            </button>
+            {!schemesLoading && schemes.length === 0 ? (
+              <span className="todo-view-attach-grouping-hint">
+                <Link to="/groupings">Create a grouping</Link> to use it here.
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </header>
+
+      {schemeMissing ? (
+        <div className="todo-view-scheme-warning" role="alert">
+          This list&apos;s grouping scheme was removed or is unavailable. Group view and per-item groups are
+          disabled until the scheme exists again.
+        </div>
+      ) : null}
 
       <form className="add-task" onSubmit={onAddTaskSubmit}>
         <input
@@ -278,21 +438,55 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
+        collisionDetection={groupedDragCollision ? closestCorners : closestCenter}
+        onDragEnd={onDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
         {sortedItems.length === 0 ? (
           <div className="empty-list">No items yet. Add your first task above!</div>
+        ) : groupedSections && scheme ? (
+          <div className="todo-grouped-sections">
+            {groupedSections.map((section) => (
+              <Fragment key={section.group.id}>
+                <div className="task-section-header">
+                  <h3 className="task-section-title">{section.group.name}</h3>
+                </div>
+                <ul className="task-rows">
+                  <SortableContext
+                    items={section.items.map((i) => i.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {section.items.map((item) => (
+                      <SortableTodoItem
+                        key={item.id}
+                        item={item}
+                        onUpdate={updateItem}
+                        onDelete={deleteItem}
+                        groupOptions={groupOptions}
+                        groupPickerDisabled={schemeMissing}
+                      />
+                    ))}
+                  </SortableContext>
+                </ul>
+              </Fragment>
+            ))}
+          </div>
         ) : (
-            <SortableContext
-              key={sortableScopeKey}
-              items={sortedItems.map((item) => item.id)}
-              strategy={verticalListSortingStrategy}
-            >
+          <SortableContext
+            key={sortableScopeKey}
+            items={sortedItems.map((item) => item.id)}
+            strategy={verticalListSortingStrategy}
+          >
             <ul className="task-rows">
               {sortedItems.map((item) => (
-                <SortableTodoItem key={item.id} item={item} onUpdate={updateItem} onDelete={deleteItem} />
+                <SortableTodoItem
+                  key={item.id}
+                  item={item}
+                  onUpdate={updateItem}
+                  onDelete={deleteItem}
+                  groupOptions={groupOptions}
+                  groupPickerDisabled={schemeMissing}
+                />
               ))}
             </ul>
           </SortableContext>
