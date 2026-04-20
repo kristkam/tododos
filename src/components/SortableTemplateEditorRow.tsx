@@ -1,22 +1,18 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { GroupingScheme, TemplateItem } from '../types';
+import type { TemplateItem } from '../types';
 import { DeleteIcon, GripIcon } from './icons';
 
 type SortableTemplateEditorRowProps = {
   item: TemplateItem;
-  scheme?: GroupingScheme;
   onChangeText: (id: string, text: string) => void;
-  onChangeGroup: (id: string, groupId: string) => void;
   onRemove: (id: string) => void;
 };
 
 export function SortableTemplateEditorRow({
   item,
-  scheme,
   onChangeText,
-  onChangeGroup,
   onRemove,
 }: SortableTemplateEditorRowProps): ReactElement {
   const {
@@ -51,26 +47,11 @@ export function SortableTemplateEditorRow({
   );
 
   const removeLabel = item.text.trim() ? `Remove ${item.text.trim()}` : 'Remove item';
-  const currentGroupId = item.groupId ?? scheme?.defaultGroupId ?? '';
 
   return (
     <li ref={setNodeRef} style={style} className="sortable-task-row">
       <div className="task-row">
         {dragHandle}
-        {scheme ? (
-          <select
-            className="task-row-group-select"
-            aria-label="Template item group"
-            value={currentGroupId}
-            onChange={(e) => onChangeGroup(item.id, e.target.value)}
-          >
-            {scheme.groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
         <input
           type="text"
           className="task-row-edit"

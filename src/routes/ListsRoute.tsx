@@ -5,7 +5,6 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { TemplatePickerModal } from '../components/TemplatePickerModal';
 import { useTodoLists } from '../contexts/TodoListsContext';
 import { useTemplates } from '../contexts/TemplatesContext';
-import { useGroupings } from '../contexts/GroupingsContext';
 import { materializeTemplateItems } from '../lib/templateItems';
 import { loadCurrentListIdFromStorage } from '../storage';
 import type { ListTemplate, TodoList } from '../types';
@@ -13,7 +12,6 @@ import type { ListTemplate, TodoList } from '../types';
 export function ListsRoute(): ReactElement {
   const { lists, loading, createList, deleteList } = useTodoLists();
   const { templates, loading: templatesLoading } = useTemplates();
-  const { schemes, loading: groupingsLoading } = useGroupings();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [listToDelete, setListToDelete] = useState<TodoList | null>(null);
@@ -29,8 +27,8 @@ export function ListsRoute(): ReactElement {
     }
   }, [loading, lists, navigate]);
 
-  const handleCreateList = async (name: string, options?: { groupingSchemeId?: string }): Promise<void> => {
-    const id = await createList(name, options);
+  const handleCreateList = async (name: string): Promise<void> => {
+    const id = await createList(name);
     if (id) {
       navigate(`/lists/${id}`);
     }
@@ -39,12 +37,9 @@ export function ListsRoute(): ReactElement {
   const handleCreateFromTemplate = async (
     template: ListTemplate,
     listName: string,
-    options?: { groupingSchemeId?: string },
   ): Promise<boolean> => {
-    const listSchemeId = template.groupingSchemeId ?? options?.groupingSchemeId;
-    const scheme = listSchemeId ? schemes.find((s) => s.id === listSchemeId) : undefined;
-    const seedItems = materializeTemplateItems(template, scheme);
-    const id = await createList(listName, { seedItems, groupingSchemeId: listSchemeId });
+    const seedItems = materializeTemplateItems(template);
+    const id = await createList(listName, { seedItems });
     if (id) {
       setTemplatePickerOpen(false);
       navigate(`/lists/${id}`);
@@ -90,10 +85,8 @@ export function ListsRoute(): ReactElement {
       <ListSelector
         lists={lists}
         currentListId={null}
-        groupingSchemes={schemes}
-        groupingsLoading={groupingsLoading}
         onSelectList={(id) => navigate(`/lists/${id}`)}
-        onCreateList={(name, opts) => void handleCreateList(name, opts)}
+        onCreateList={(name) => void handleCreateList(name)}
         onDeleteList={handleDeleteRequest}
         onStartFromTemplate={() => setTemplatePickerOpen(true)}
       />
@@ -101,10 +94,8 @@ export function ListsRoute(): ReactElement {
         isOpen={templatePickerOpen}
         templates={templates}
         templatesLoading={templatesLoading}
-        groupingSchemes={schemes}
-        groupingsLoading={groupingsLoading}
         onClose={() => setTemplatePickerOpen(false)}
-        onCreateFromTemplate={(template, listName, opts) => handleCreateFromTemplate(template, listName, opts)}
+        onCreateFromTemplate={(template, listName) => handleCreateFromTemplate(template, listName)}
       />
       <ConfirmModal
         isOpen={showDeleteModal}

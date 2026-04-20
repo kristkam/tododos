@@ -1,4 +1,4 @@
-import type { GroupingScheme, ListTemplate, TemplateItem, TodoItem } from '../types';
+import type { ListTemplate, TemplateItem, TodoItem } from '../types';
 
 /** Client-generated id for new rows (todo items from templates, template editor rows). */
 export function newClientId(): string {
@@ -9,37 +9,22 @@ export function newClientId(): string {
 }
 
 /** Turn persisted template rows into new todo items for a fresh list (new ids, not completed). */
-export function materializeTemplateItems(template: ListTemplate, listScheme?: GroupingScheme): TodoItem[] {
+export function materializeTemplateItems(template: ListTemplate): TodoItem[] {
   const now = new Date();
-  return template.items.map((item) => {
-    const base: TodoItem = {
-      id: newClientId(),
-      text: item.text,
-      completed: false,
-      createdAt: now,
-      order: item.order,
-    };
-    if (!listScheme) {
-      return base;
-    }
-    const ids = new Set(listScheme.groups.map((g) => g.id));
-    const groupId =
-      item.groupId !== undefined && ids.has(item.groupId) ? item.groupId : listScheme.defaultGroupId;
-    return { ...base, groupId };
-  });
+  return template.items.map((item) => ({
+    id: newClientId(),
+    text: item.text,
+    completed: false,
+    createdAt: now,
+    order: item.order,
+  }));
 }
 
 /** Copy list items into template shape (no completion or createdAt). */
 export function todoItemsToTemplateItems(items: TodoItem[]): TemplateItem[] {
-  return items.map((item) => {
-    const row: TemplateItem = {
-      id: item.id,
-      text: item.text,
-      order: item.order,
-    };
-    if (item.groupId !== undefined) {
-      row.groupId = item.groupId;
-    }
-    return row;
-  });
+  return items.map((item) => ({
+    id: item.id,
+    text: item.text,
+    order: item.order,
+  }));
 }

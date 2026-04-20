@@ -2,24 +2,16 @@ import type { CSSProperties, ReactElement } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { TodoItem as TodoItemType } from '../types';
-import { TodoItem, type TodoItemGroupOption } from './TodoItem';
+import { TodoItem } from './TodoItem';
 import { GripIcon } from './icons';
 
 type SortableTodoItemProps = {
   item: TodoItemType;
   onUpdate: (item: TodoItemType) => void;
   onDelete: (itemId: string) => void;
-  groupOptions?: readonly TodoItemGroupOption[];
-  groupPickerDisabled?: boolean;
 };
 
-export function SortableTodoItem({
-  item,
-  onUpdate,
-  onDelete,
-  groupOptions,
-  groupPickerDisabled,
-}: SortableTodoItemProps): ReactElement {
+export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemProps): ReactElement {
   const {
     attributes,
     listeners,
@@ -30,6 +22,7 @@ export function SortableTodoItem({
     isDragging,
   } = useSortable({
     id: item.id,
+    data: { type: 'item' },
   });
 
   const style: CSSProperties = {
@@ -55,14 +48,7 @@ export function SortableTodoItem({
 
   return (
     <li ref={setNodeRef} style={style} className="sortable-task-row">
-      <TodoItem
-        item={item}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        dragHandle={dragHandle}
-        groupOptions={groupOptions}
-        groupPickerDisabled={groupPickerDisabled}
-      />
+      <TodoItem item={item} onUpdate={onUpdate} onDelete={onDelete} dragHandle={dragHandle} />
     </li>
   );
 }

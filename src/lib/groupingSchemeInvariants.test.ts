@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateGroupingSchemeDraft } from './groupingSchemeInvariants';
+import { normalizeGroupAliases, validateGroupingSchemeDraft } from './groupingSchemeInvariants';
 
 describe('validateGroupingSchemeDraft', () => {
   it('returns null for valid draft', () => {
@@ -7,10 +7,9 @@ describe('validateGroupingSchemeDraft', () => {
       validateGroupingSchemeDraft({
         name: 'Dinners',
         groups: [
-          { id: 'a', name: 'Pasta' },
-          { id: 'b', name: 'Other' },
+          { id: 'a', name: 'Pasta', aliases: [] },
+          { id: 'b', name: 'Other', aliases: ['misc'] },
         ],
-        defaultGroupId: 'b',
       }),
     ).toBeNull();
   });
@@ -19,8 +18,7 @@ describe('validateGroupingSchemeDraft', () => {
     expect(
       validateGroupingSchemeDraft({
         name: '   ',
-        groups: [{ id: 'a', name: 'x' }],
-        defaultGroupId: 'a',
+        groups: [{ id: 'a', name: 'x', aliases: [] }],
       }),
     ).toBe('empty-name');
   });
@@ -30,18 +28,42 @@ describe('validateGroupingSchemeDraft', () => {
       validateGroupingSchemeDraft({
         name: 'x',
         groups: [],
-        defaultGroupId: 'a',
       }),
     ).toBe('no-groups');
   });
 
-  it('rejects invalid default', () => {
+  it('rejects duplicate group names (case-insensitive)', () => {
     expect(
       validateGroupingSchemeDraft({
         name: 'x',
-        groups: [{ id: 'a', name: 'y' }],
-        defaultGroupId: 'missing',
+        groups: [
+          { id: 'a', name: 'Fruit', aliases: [] },
+          { id: 'b', name: 'fruit', aliases: [] },
+        ],
       }),
-    ).toBe('invalid-default-group');
+    ).toBe('duplicate-group-name');
+  });
+
+  it('rejects an alias that collides with a group name', () => {
+    expect(
+      validateGroupingSchemeDraft({
+        name: 'x',
+        groups: [
+          { id: 'a', name: 'Fruit', aliases: [] },
+          { id: 'b', name: 'Meat', aliases: ['fruit'] },
+        ],
+      }),
+    ).toBe('duplicate-alias');
+  });
+});
+
+describe('normalizeGroupAliases', () => {
+  it('trims, lowercases, de-duplicates, and excludes the name itself', () => {
+    const normalized = normalizeGroupAliases({
+      id: 'g',
+      name: 'Fruit',
+      aliases: [' Apple ', 'apple', 'FRUIT', '  ', 'berry'],
+    });
+    expect(normalized.aliases).toEqual(['apple', 'berry']);
   });
 });

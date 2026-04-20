@@ -9,16 +9,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import type { GroupingScheme, ListTemplate, TemplateItem } from '../types';
+import type { ListTemplate, TemplateItem } from '../types';
 import { templateStorage } from '../firebase/templateStorageAdapter';
-import { groupingStorage } from '../firebase/groupingStorageAdapter';
 import { useToast } from '../hooks/useToast';
-import { normalizeListTemplates } from '../lib/normalizeGroupingForLists';
 
 export type CreateTemplateInput = {
   name: string;
   items: TemplateItem[];
-  groupingSchemeId?: string;
 };
 
 export type TemplatesContextValue = {
@@ -42,44 +39,22 @@ export function TemplatesProvider({ children }: TemplatesProviderProps): ReactEl
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
   const showToastRef = useRef(showToast);
-  const rawTemplatesRef = useRef<ListTemplate[]>([]);
-  const schemesRef = useRef<GroupingScheme[]>([]);
-  const templatesRef = useRef<ListTemplate[]>([]);
 
   useEffect(() => {
     showToastRef.current = showToast;
   }, [showToast]);
 
   useEffect(() => {
-    templatesRef.current = templates;
-  }, [templates]);
-
-  const applyNormalization = useCallback((): void => {
-    setTemplates(normalizeListTemplates(rawTemplatesRef.current, schemesRef.current));
-  }, []);
-
-  useEffect(() => {
-    const unsubTemplates = templateStorage.subscribeToTemplates((updated) => {
-      rawTemplatesRef.current = updated;
-      applyNormalization();
+    const unsubscribe = templateStorage.subscribeToTemplates((updated) => {
+      setTemplates(updated);
       setLoading(false);
       setError(null);
     });
 
-    const unsubSchemes = groupingStorage.subscribeToSchemes((updatedSchemes) => {
-      schemesRef.current = updatedSchemes;
-      applyNormalization();
-    });
-
     const loadFallback = async (): Promise<void> => {
       try {
-        const [initialTemplates, initialSchemes] = await Promise.all([
-          templateStorage.loadTemplates(),
-          groupingStorage.loadSchemes(),
-        ]);
-        rawTemplatesRef.current = initialTemplates;
-        schemesRef.current = initialSchemes;
-        setTemplates(normalizeListTemplates(initialTemplates, initialSchemes));
+        const initial = await templateStorage.loadTemplates();
+        setTemplates(initial);
         setLoading(false);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load templates';
@@ -90,19 +65,16 @@ export function TemplatesProvider({ children }: TemplatesProviderProps): ReactEl
       }
     };
 
-    if (!unsubTemplates || !unsubSchemes) {
+    if (!unsubscribe) {
       void loadFallback();
     }
 
     return () => {
-      if (unsubTemplates) {
-        unsubTemplates();
-      }
-      if (unsubSchemes) {
-        unsubSchemes();
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, [applyNormalization]);
+  }, []);
 
   const createTemplate = useCallback(async (input: CreateTemplateInput): Promise<string | null> => {
     try {
@@ -112,7 +84,6 @@ export function TemplatesProvider({ children }: TemplatesProviderProps): ReactEl
         items: input.items,
         createdAt: now,
         updatedAt: now,
-        groupingSchemeId: input.groupingSchemeId,
       };
       const id = await templateStorage.createTemplate(newTemplate);
       showToastRef.current(`Created template "${newTemplate.name}"`, 'success');
@@ -126,14 +97,6 @@ export function TemplatesProvider({ children }: TemplatesProviderProps): ReactEl
   }, []);
 
   const updateTemplate = useCallback(async (template: ListTemplate): Promise<boolean> => {
-    const stored = templatesRef.current.find((t) => t.id === template.id);
-    if (
-      stored?.groupingSchemeId !== undefined &&
-      template.groupingSchemeId !== stored.groupingSchemeId
-    ) {
-      showToastRef.current('Cannot change grouping scheme on this template.', 'error');
-      return false;
-    }
     try {
       const updated: ListTemplate = {
         ...template,

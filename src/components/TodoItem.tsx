@@ -3,30 +3,15 @@ import type { TodoItem as TodoItemType } from '../types';
 import { DeleteIcon, EditIcon } from './icons';
 import { Checkbox } from './Checkbox';
 
-export type TodoItemGroupOption = {
-  id: string;
-  name: string;
-};
-
 type TodoItemProps = {
   item: TodoItemType;
   onUpdate: (item: TodoItemType) => void;
   onDelete: (itemId: string) => void;
   /** Drag handle for reorder (dnd-kit). */
   dragHandle?: ReactNode;
-  /** When set and picker is enabled, show a group selector for this row. */
-  groupOptions?: readonly TodoItemGroupOption[];
-  groupPickerDisabled?: boolean;
 };
 
-export function TodoItem({
-  item,
-  onUpdate,
-  onDelete,
-  dragHandle,
-  groupOptions,
-  groupPickerDisabled,
-}: TodoItemProps): ReactElement {
+export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps): ReactElement {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,9 +65,6 @@ export function TodoItem({
     saveEdit();
   };
 
-  const showGroupPicker = Boolean(groupOptions?.length) && !groupPickerDisabled;
-  const currentGroupId = item.groupId ?? '';
-
   return (
     <div className={`task-row ${item.completed ? 'is-completed' : ''}`}>
       {dragHandle}
@@ -91,23 +73,6 @@ export function TodoItem({
         onChange={(completed) => onUpdate({ ...item, completed })}
         label={item.text}
       />
-      {showGroupPicker ? (
-        <select
-          className="task-row-group-select"
-          aria-label="Task group"
-          value={currentGroupId}
-          onChange={(e) => {
-            const next = e.target.value;
-            onUpdate({ ...item, groupId: next });
-          }}
-        >
-          {groupOptions!.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-      ) : null}
       {isEditing ? (
         <input
           ref={inputRef}

@@ -20,12 +20,12 @@ const GROUPING_SCHEMES_COLLECTION = 'groupingSchemes';
 type FirestoreItemGroup = {
   id: string;
   name: string;
+  aliases?: string[];
 };
 
 type FirestoreGroupingScheme = {
   name: string;
   groups: FirestoreItemGroup[];
-  defaultGroupId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -38,23 +38,25 @@ const convertFirestoreToGroupingScheme = (
   return {
     id: snapshot.id,
     name: data.name,
-    groups: rawGroups.map((g: FirestoreItemGroup): ItemGroup => ({
+    groups: rawGroups.map((g): ItemGroup => ({
       id: g.id,
       name: g.name,
+      aliases: Array.isArray(g.aliases) ? [...g.aliases] : [],
     })),
-    defaultGroupId: data.defaultGroupId,
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   };
 };
 
-const convertGroupingSchemeToFirestore = (scheme: Omit<GroupingScheme, 'id'>): FirestoreGroupingScheme => ({
+const convertGroupingSchemeToFirestore = (
+  scheme: Omit<GroupingScheme, 'id'>,
+): FirestoreGroupingScheme => ({
   name: scheme.name,
   groups: scheme.groups.map((g: ItemGroup) => ({
     id: g.id,
     name: g.name,
+    aliases: [...g.aliases],
   })),
-  defaultGroupId: scheme.defaultGroupId,
   createdAt: Timestamp.fromDate(scheme.createdAt),
   updatedAt: Timestamp.fromDate(scheme.updatedAt),
 });
@@ -103,7 +105,6 @@ export const groupingFirebaseService = {
       const firestoreData = convertGroupingSchemeToFirestore({
         name: scheme.name,
         groups: scheme.groups,
-        defaultGroupId: scheme.defaultGroupId,
         createdAt: scheme.createdAt,
         updatedAt: new Date(),
       });

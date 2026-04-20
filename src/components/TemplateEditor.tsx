@@ -23,27 +23,19 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import type { GroupingScheme, TemplateItem } from '../types';
+import type { TemplateItem } from '../types';
 import { newClientId } from '../lib/templateItems';
 import { SortableTemplateEditorRow } from './SortableTemplateEditorRow';
 import { CheckIcon } from './icons';
 
-const TEMPLATE_GROUPING_SELECT_ID = 'template-editor-grouping';
-
 export type TemplateEditorSubmitPayload = {
   name: string;
   items: TemplateItem[];
-  groupingSchemeId?: string;
 };
 
 export type TemplateEditorProps = {
   initialName: string;
   initialItems: TemplateItem[];
-  schemes: GroupingScheme[];
-  /** When set, template is tied to this scheme (new saves it; edit keeps it read-only). */
-  initialGroupingSchemeId?: string;
-  /** If true, grouping scheme cannot be changed (edit flow with existing scheme). */
-  groupingLocked?: boolean;
   submitLabel: string;
   onSubmit: (payload: TemplateEditorSubmitPayload) => void | Promise<void>;
   onCancel: () => void;
@@ -52,24 +44,15 @@ export type TemplateEditorProps = {
 export function TemplateEditor({
   initialName,
   initialItems,
-  schemes,
-  initialGroupingSchemeId,
-  groupingLocked = false,
   submitLabel,
   onSubmit,
   onCancel,
 }: TemplateEditorProps): ReactElement {
   const [name, setName] = useState(initialName);
   const [items, setItems] = useState<TemplateItem[]>(initialItems);
-  const [localSchemeId, setLocalSchemeId] = useState(initialGroupingSchemeId ?? '');
   const [newItemText, setNewItemText] = useState('');
   const addItemInputRef = useRef<HTMLInputElement>(null);
   const addItemSubmitRef = useRef<HTMLButtonElement>(null);
-
-  const activeScheme = useMemo(
-    () => (localSchemeId ? schemes.find((s) => s.id === localSchemeId) : undefined),
-    [localSchemeId, schemes],
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -84,40 +67,19 @@ export function TemplateEditor({
 
   const sortableScopeKey = useMemo(() => [...items.map((i) => i.id)].sort().join('|'), [items]);
 
-  const handleSchemeChange = (nextId: string): void => {
-    setLocalSchemeId(nextId);
-    if (!nextId) {
-      setItems((prev) =>
-        prev.map((row) => {
-          const next: TemplateItem = { id: row.id, text: row.text, order: row.order };
-          return next;
-        }),
-      );
-      return;
-    }
-    const sc = schemes.find((s) => s.id === nextId);
-    if (!sc) {
-      return;
-    }
-    setItems((prev) => prev.map((row) => ({ ...row, groupId: sc.defaultGroupId })));
-  };
-
   const tryCommitNewItemFromRaw = (raw: string): boolean => {
     const trimmed = raw.trim();
     if (!trimmed) {
       return false;
     }
-    setItems((prev) => {
-      const row: TemplateItem = {
+    setItems((prev) => [
+      ...prev,
+      {
         id: newClientId(),
         text: trimmed,
         order: prev.length,
-      };
-      if (activeScheme) {
-        row.groupId = activeScheme.defaultGroupId;
-      }
-      return [...prev, row];
-    });
+      },
+    ]);
     setNewItemText('');
     return true;
   };
@@ -156,10 +118,6 @@ export function TemplateEditor({
     setItems((prev) => prev.map((row) => (row.id === id ? { ...row, text } : row)));
   };
 
-  const updateGroup = (id: string, groupId: string): void => {
-    setItems((prev) => prev.map((row) => (row.id === id ? { ...row, groupId } : row)));
-  };
-
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
     if (!over || active.id === over.id) {
@@ -183,48 +141,15 @@ export function TemplateEditor({
       if (!trimmedName) {
         return;
       }
-      const schemeForSubmit = localSchemeId ? schemes.find((s) => s.id === localSchemeId) : undefined;
-      const trimmedRows = items
+      const normalized: TemplateItem[] = items
         .map((row) => ({ ...row, text: row.text.trim() }))
-        .filter((row) => row.text.length > 0);
+        .filter((row) => row.text.length > 0)
+        .map((row, index) => ({ id: row.id, text: row.text, order: index }));
 
-      let normalized: TemplateItem[] = trimmedRows.map((row, index) => ({
-        id: row.id,
-        text: row.text,
-        order: index,
-        ...(row.groupId !== undefined ? { groupId: row.groupId } : {}),
-      }));
-
-      if (schemeForSubmit) {
-        normalized = normalized.map((row) => ({
-          id: row.id,
-          text: row.text,
-          order: row.order,
-          groupId:
-            row.groupId !== undefined && schemeForSubmit.groups.some((g) => g.id === row.groupId)
-              ? row.groupId
-              : schemeForSubmit.defaultGroupId,
-        }));
-      } else {
-        normalized = normalized.map((row) => ({
-          id: row.id,
-          text: row.text,
-          order: row.order,
-        }));
-      }
-
-      await Promise.resolve(
-        onSubmit({
-          name: trimmedName,
-          items: normalized,
-          groupingSchemeId: schemeForSubmit?.id,
-        }),
-      );
+      await Promise.resolve(onSubmit({ name: trimmedName, items: normalized }));
     },
-    [items, localSchemeId, name, onSubmit, schemes],
+    [items, name, onSubmit],
   );
-
-  const schemeNameLabel = activeScheme?.name ?? 'Unknown';
 
   return (
     <form className="template-editor" onSubmit={(e) => void handleSubmit(e)}>
@@ -243,32 +168,6 @@ export function TemplateEditor({
           required
         />
       </div>
-
-      {groupingLocked ? (
-        <p className="template-editor-grouping-note" role="status">
-          Grouping: {schemeNameLabel}
-        </p>
-      ) : (
-        <div className="template-editor-field">
-          <label htmlFor={TEMPLATE_GROUPING_SELECT_ID} className="template-editor-label">
-            Grouping (optional)
-          </label>
-          <select
-            id={TEMPLATE_GROUPING_SELECT_ID}
-            className="template-editor-name-input"
-            value={localSchemeId}
-            onChange={(e) => handleSchemeChange(e.target.value)}
-            disabled={schemes.length === 0}
-          >
-            <option value="">None</option>
-            {schemes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       <div className="template-editor-items-header">
         <span className="template-editor-label">Items</span>
@@ -323,9 +222,7 @@ export function TemplateEditor({
                 <SortableTemplateEditorRow
                   key={row.id}
                   item={row}
-                  scheme={activeScheme}
                   onChangeText={updateText}
-                  onChangeGroup={updateGroup}
                   onRemove={removeRow}
                 />
               ))}

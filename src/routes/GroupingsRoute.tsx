@@ -1,9 +1,8 @@
-import { useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useGroupings } from '../contexts/GroupingsContext';
 import { useTodoLists } from '../contexts/TodoListsContext';
-import { useTemplates } from '../contexts/TemplatesContext';
 import type { GroupingScheme } from '../types';
 
 function formatSchemeUpdatedDate(date: Date): string {
@@ -14,38 +13,50 @@ function formatSchemeUpdatedDate(date: Date): string {
   });
 }
 
-function usageLine(listCount: number, templateCount: number): string {
-  const parts: string[] = [];
-  if (listCount > 0) {
-    parts.push(`${listCount} list${listCount === 1 ? '' : 's'}`);
-  }
-  if (templateCount > 0) {
-    parts.push(`${templateCount} template${templateCount === 1 ? '' : 's'}`);
-  }
-  if (parts.length === 0) {
+function usageLine(listCount: number): string {
+  if (listCount === 0) {
     return 'Not in use';
   }
-  return `Used by ${parts.join(' and ')}`;
+  return `Active on ${listCount} list${listCount === 1 ? '' : 's'}`;
+}
+
+function formatAffectedListsForMessage(names: readonly string[]): string {
+  const MAX = 5;
+  if (names.length <= MAX) {
+    return names.map((n) => `"${n}"`).join(', ');
+  }
+  const shown = names.slice(0, MAX).map((n) => `"${n}"`).join(', ');
+  return `${shown} and ${names.length - MAX} more`;
 }
 
 export function GroupingsRoute(): ReactElement {
   const { schemes, loading, deleteScheme } = useGroupings();
   const { lists } = useTodoLists();
-  const { templates } = useTemplates();
   const navigate = useNavigate();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [schemeToDelete, setSchemeToDelete] = useState<GroupingScheme | null>(null);
+
+  const affectedListsByScheme = useMemo(() => {
+    const by = new Map<string, string[]>();
+    for (const list of lists) {
+      if (!list.activeGroupingId) continue;
+      const bucket = by.get(list.activeGroupingId);
+      if (bucket) {
+        bucket.push(list.name);
+      } else {
+        by.set(list.activeGroupingId, [list.name]);
+      }
+    }
+    return by;
+  }, [lists]);
 
   const requestDelete = (schemeId: string): void => {
     const found = schemes.find((s) => s.id === schemeId);
     if (found) {
       setSchemeToDelete(found);
-      setShowDeleteModal(true);
     }
   };
 
   const cancelDelete = (): void => {
-    setShowDeleteModal(false);
     setSchemeToDelete(null);
   };
 
@@ -54,10 +65,19 @@ export function GroupingsRoute(): ReactElement {
       return;
     }
     const { id, name } = schemeToDelete;
-    setShowDeleteModal(false);
     setSchemeToDelete(null);
     await deleteScheme(id, name);
   };
+
+  const deleteMessage = useMemo(() => {
+    if (!schemeToDelete) return '';
+    const affected = affectedListsByScheme.get(schemeToDelete.id) ?? [];
+    if (affected.length === 0) {
+      return `Delete "${schemeToDelete.name}"? This cannot be undone.`;
+    }
+    const label = affected.length === 1 ? 'list' : 'lists';
+    return `Delete "${schemeToDelete.name}"? It's active on ${affected.length} ${label}: ${formatAffectedListsForMessage(affected)}. Those lists will revert to ungrouped view.`;
+  }, [schemeToDelete, affectedListsByScheme]);
 
   if (loading) {
     return (
@@ -78,7 +98,7 @@ export function GroupingsRoute(): ReactElement {
           </Link>
         </div>
         <p className="templates-view-intro">
-          Define named groups (e.g. dinners or grocery aisles). Pick a grouping when you create a list.
+          Define named groups with aliases (e.g. dinners or grocery aisles). Apply a grouping to any list from the list view.
         </p>
 
         {schemes.length === 0 ? (
@@ -88,8 +108,7 @@ export function GroupingsRoute(): ReactElement {
         ) : (
           <ul className="list-rows">
             {schemes.map((scheme) => {
-              const listCount = lists.filter((l) => l.groupingSchemeId === scheme.id).length;
-              const templateCount = templates.filter((t) => t.groupingSchemeId === scheme.id).length;
+              const affected = affectedListsByScheme.get(scheme.id) ?? [];
               return (
                 <li key={scheme.id} className="list-rows-item">
                   <div className="list-row-card template-row-card">
@@ -97,7 +116,7 @@ export function GroupingsRoute(): ReactElement {
                       <div className="list-row-title">{scheme.name}</div>
                       <div className="list-row-subtitle">
                         {scheme.groups.length} {scheme.groups.length === 1 ? 'group' : 'groups'} ·{' '}
-                        {usageLine(listCount, templateCount)} · Updated{' '}
+                        {usageLine(affected.length)} · Updated{' '}
                         {formatSchemeUpdatedDate(scheme.updatedAt)}
                       </div>
                     </div>
@@ -130,13 +149,9 @@ export function GroupingsRoute(): ReactElement {
       </div>
 
       <ConfirmModal
-        isOpen={showDeleteModal}
+        isOpen={schemeToDelete !== null}
         title="Delete grouping"
-        message={
-          schemeToDelete
-            ? `Delete "${schemeToDelete.name}"? This cannot be undone. You can only delete groupings that are not used by any list or template.`
-            : ''
-        }
+        message={deleteMessage}
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={() => {

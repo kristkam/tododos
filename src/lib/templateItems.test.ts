@@ -34,34 +34,10 @@ describe('materializeTemplateItems', () => {
 
     spy.mockRestore();
   });
-
-  it('assigns default group when a list scheme is provided', () => {
-    const template: ListTemplate = {
-      id: 'tpl-1',
-      name: 'Shop',
-      items: [{ id: 'old', text: 'Milk', order: 0 }],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    const listScheme = {
-      id: 'sch-1',
-      name: 'Aisles',
-      groups: [
-        { id: 'dairy', name: 'Dairy' },
-        { id: 'other', name: 'Other' },
-      ],
-      defaultGroupId: 'other',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    const out = materializeTemplateItems(template, listScheme);
-    expect(out).toHaveLength(1);
-    expect(out[0].groupId).toBe('other');
-  });
 });
 
 describe('todoItemsToTemplateItems', () => {
-  it('maps to template items without completed or createdAt in the result shape', () => {
+  it('maps to template items dropping completed, createdAt, and any legacy fields', () => {
     const items: TodoItem[] = [
       {
         id: 'i1',
@@ -69,11 +45,10 @@ describe('todoItemsToTemplateItems', () => {
         completed: true,
         createdAt: new Date('2020-01-01'),
         order: 2,
-        groupId: 'g1',
       },
     ];
     const out = todoItemsToTemplateItems(items);
-    expect(out).toEqual([{ id: 'i1', text: 'Buy milk', order: 2, groupId: 'g1' }]);
+    expect(out).toEqual([{ id: 'i1', text: 'Buy milk', order: 2 }]);
     expect('completed' in out[0]).toBe(false);
     expect('createdAt' in out[0]).toBe(false);
   });

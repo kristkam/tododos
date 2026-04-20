@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDocs,
   setDoc,
@@ -10,6 +11,7 @@ import {
   onSnapshot,
   Timestamp,
   type DocumentData,
+  type FieldValue,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './config';
@@ -17,79 +19,76 @@ import type { TodoList, TodoItem } from '../types';
 
 const LISTS_COLLECTION = 'todoLists';
 
-interface FirestoreTodoList {
+type FirestoreTodoList = {
   name: string;
   items: FirestoreTodoItem[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   sortBy?: 'normal' | 'completed-top' | 'completed-bottom';
-  groupingSchemeId?: string;
-  groupBy?: boolean;
-}
+  activeGroupingId?: string;
+  groupOrder?: string[];
+};
 
-interface FirestoreTodoItem {
+type FirestoreTodoItem = {
   id: string;
   text: string;
   completed: boolean;
   createdAt: Timestamp;
   order?: number;
-  groupId?: string;
-}
+};
 
 const convertFirestoreToTodoList = (docSnap: QueryDocumentSnapshot<DocumentData>): TodoList => {
   const data = docSnap.data() as FirestoreTodoList;
   const rawItems = data.items ?? [];
-  return {
+  const list: TodoList = {
     id: docSnap.id,
     name: data.name,
-    items: rawItems.map((item: FirestoreTodoItem) => {
-      const row: TodoItem = {
-        id: item.id,
-        text: item.text,
-        completed: item.completed,
-        createdAt: item.createdAt.toDate(),
-        order: item.order,
-      };
-      if (item.groupId !== undefined) {
-        row.groupId = item.groupId;
-      }
-      return row;
-    }),
+    items: rawItems.map((item): TodoItem => ({
+      id: item.id,
+      text: item.text,
+      completed: item.completed,
+      createdAt: item.createdAt.toDate(),
+      order: item.order,
+    })),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
     sortBy: data.sortBy ?? 'normal',
-    groupingSchemeId: data.groupingSchemeId,
-    groupBy: data.groupBy ?? false,
   };
+  if (typeof data.activeGroupingId === 'string' && data.activeGroupingId.length > 0) {
+    list.activeGroupingId = data.activeGroupingId;
+  }
+  if (Array.isArray(data.groupOrder) && data.groupOrder.length > 0) {
+    list.groupOrder = [...data.groupOrder];
+  }
+  return list;
 };
 
 const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoList => {
-  const firestoreList: FirestoreTodoList = {
+  const out: FirestoreTodoList = {
     name: list.name,
     items: list.items.map((item: TodoItem) => {
-      const firestoreItem: FirestoreTodoItem = {
+      const row: FirestoreTodoItem = {
         id: item.id,
         text: item.text,
         completed: item.completed,
         createdAt: Timestamp.fromDate(item.createdAt),
       };
       if (item.order !== undefined) {
-        firestoreItem.order = item.order;
+        row.order = item.order;
       }
-      if (item.groupId !== undefined) {
-        firestoreItem.groupId = item.groupId;
-      }
-      return firestoreItem;
+      return row;
     }),
     createdAt: Timestamp.fromDate(list.createdAt),
     updatedAt: Timestamp.fromDate(list.updatedAt),
     sortBy: list.sortBy,
-    groupBy: list.groupBy,
   };
-  if (list.groupingSchemeId !== undefined) {
-    firestoreList.groupingSchemeId = list.groupingSchemeId;
+  if (list.activeGroupingId !== undefined) {
+    out.activeGroupingId = list.activeGroupingId;
   }
-  return firestoreList;
+  if (list.groupOrder !== undefined) {
+    out.groupOrder = [...list.groupOrder];
+  }
+  return out;
 };
 
 export const firebaseService = {
@@ -140,10 +139,17 @@ export const firebaseService = {
         createdAt: list.createdAt,
         updatedAt: new Date(),
         sortBy: list.sortBy,
-        groupingSchemeId: list.groupingSchemeId,
-        groupBy: list.groupBy,
+        activeGroupingId: list.activeGroupingId,
+        groupOrder: list.groupOrder,
       });
-      await updateDoc(listRef, firestoreData as Partial<FirestoreTodoList>);
+      const payload: Record<string, unknown> = { ...firestoreData };
+      const activeGrouping: string | FieldValue =
+        list.activeGroupingId ?? deleteField();
+      const groupOrder: string[] | FieldValue =
+        list.groupOrder ?? deleteField();
+      payload.activeGroupingId = activeGrouping;
+      payload.groupOrder = groupOrder;
+      await updateDoc(listRef, payload);
     } catch (error) {
       console.error('Error updating list in Firebase:', error);
       throw error;

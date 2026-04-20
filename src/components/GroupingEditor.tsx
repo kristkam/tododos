@@ -25,38 +25,60 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import type { ItemGroup } from '../types';
 import { newClientId } from '../lib/templateItems';
-import { validateGroupingSchemeDraft } from '../lib/groupingSchemeInvariants';
+import {
+  normalizeGroupAliases,
+  validateGroupingSchemeDraft,
+} from '../lib/groupingSchemeInvariants';
+import { normalizeAlias } from '../lib/matchItemsToGroups';
 import { SortableGroupingEditorRow } from './SortableGroupingEditorRow';
 import { CheckIcon } from './icons';
-import { ConfirmModal } from './ConfirmModal';
 
-export type GroupingEditorProps = {
-  initialName: string;
-  initialGroups: ItemGroup[];
-  initialDefaultGroupId: string;
-  submitLabel: string;
-  /** When non-null, user must confirm before removing that group (e.g. in-use scheme). */
-  buildRemoveGroupMessage?: (groupId: string) => string | null;
-  onSubmit: (payload: { name: string; groups: ItemGroup[]; defaultGroupId: string }) => void | Promise<void>;
-  onCancel: () => void;
+export type GroupingEditorPayload = {
+  name: string;
+  groups: ItemGroup[];
 };
 
+export type GroupingEditorMode = 'create' | 'edit';
+
+type SaveStatus =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; at: Date }
+  | { kind: 'held' }
+  | { kind: 'error' };
+
+export type GroupingEditorProps = {
+  mode: GroupingEditorMode;
+  initialName: string;
+  initialGroups: ItemGroup[];
+  /** Create mode only: user pressed the primary submit. */
+  onCreate?: (payload: GroupingEditorPayload) => void | Promise<void>;
+  /** Edit mode only: persist the current valid draft. Return true on success. */
+  onPatch?: (payload: GroupingEditorPayload) => Promise<boolean>;
+  onCancel: () => void;
+  onDone?: () => void;
+};
+
+function formatClockTime(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
 export function GroupingEditor({
+  mode,
   initialName,
   initialGroups,
-  initialDefaultGroupId,
-  submitLabel,
-  buildRemoveGroupMessage,
-  onSubmit,
+  onCreate,
+  onPatch,
   onCancel,
+  onDone,
 }: GroupingEditorProps): ReactElement {
   const [name, setName] = useState(initialName);
   const [groups, setGroups] = useState<ItemGroup[]>(initialGroups);
-  const [defaultGroupId, setDefaultGroupId] = useState(initialDefaultGroupId);
   const [newGroupText, setNewGroupText] = useState('');
-  const [pendingRemove, setPendingRemove] = useState<{ id: string; message: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: 'idle' });
   const addInputRef = useRef<HTMLInputElement>(null);
   const addSubmitRef = useRef<HTMLButtonElement>(null);
+  const lastPersistedRef = useRef<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -70,13 +92,47 @@ export function GroupingEditor({
   const sortableScopeKey = useMemo(() => [...groups.map((g) => g.id)].sort().join('|'), [groups]);
 
   const validationError = useMemo(
-    () =>
-      validateGroupingSchemeDraft({
-        name,
-        groups,
-        defaultGroupId,
-      }),
-    [name, groups, defaultGroupId],
+    () => validateGroupingSchemeDraft({ name, groups }),
+    [name, groups],
+  );
+
+  const existingAliasSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of groups) {
+      const nameKey = normalizeAlias(g.name);
+      if (nameKey) set.add(nameKey);
+      for (const a of g.aliases) {
+        set.add(a);
+      }
+    }
+    return set;
+  }, [groups]);
+
+  const persistIfEdit = useCallback(
+    async (draft: GroupingEditorPayload): Promise<void> => {
+      if (mode !== 'edit' || !onPatch) {
+        return;
+      }
+      const trimmedName = draft.name.trim();
+      const normalized = draft.groups.map(normalizeGroupAliases);
+      if (validateGroupingSchemeDraft({ name: trimmedName, groups: normalized }) !== null) {
+        setSaveStatus({ kind: 'held' });
+        return;
+      }
+      const signature = JSON.stringify({ name: trimmedName, groups: normalized });
+      if (signature === lastPersistedRef.current) {
+        return;
+      }
+      setSaveStatus({ kind: 'saving' });
+      const ok = await onPatch({ name: trimmedName, groups: normalized });
+      if (ok) {
+        lastPersistedRef.current = signature;
+        setSaveStatus({ kind: 'saved', at: new Date() });
+      } else {
+        setSaveStatus({ kind: 'error' });
+      }
+    },
+    [mode, onPatch],
   );
 
   const tryCommitNewGroup = (raw: string): boolean => {
@@ -84,15 +140,10 @@ export function GroupingEditor({
     if (!trimmed) {
       return false;
     }
-    const id = newClientId();
-    setGroups((prev) => {
-      const next = [...prev, { id, name: trimmed }];
-      if (prev.length === 0) {
-        setDefaultGroupId(id);
-      }
-      return next;
-    });
+    const next = [...groups, { id: newClientId(), name: trimmed, aliases: [] }];
+    setGroups(next);
     setNewGroupText('');
+    void persistIfEdit({ name, groups: next });
     return true;
   };
 
@@ -118,33 +169,49 @@ export function GroupingEditor({
     }, 0);
   };
 
-  const applyRemoveRow = (id: string): void => {
-    setGroups((prev) => {
-      if (prev.length <= 1) {
-        return prev;
-      }
-      const filtered = prev.filter((g) => g.id !== id);
-      if (defaultGroupId === id && filtered[0]) {
-        setDefaultGroupId(filtered[0].id);
-      }
-      return filtered;
-    });
-  };
-
-  const requestRemoveRow = (id: string): void => {
-    if (id === defaultGroupId) {
+  const removeRow = (id: string): void => {
+    if (groups.length <= 1) {
       return;
     }
-    const extra = buildRemoveGroupMessage?.(id);
-    if (extra) {
-      setPendingRemove({ id, message: extra });
-      return;
-    }
-    applyRemoveRow(id);
+    const next = groups.filter((g) => g.id !== id);
+    setGroups(next);
+    void persistIfEdit({ name, groups: next });
   };
 
   const updateName = (id: string, nextName: string): void => {
     setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, name: nextName } : g)));
+  };
+
+  const commitGroupName = (id: string): void => {
+    const next = groups.map((g) => (g.id === id ? { ...g, name: g.name.trim() } : g));
+    if (next.some((g, i) => g.name !== groups[i].name)) {
+      setGroups(next);
+    }
+    void persistIfEdit({ name, groups: next });
+  };
+
+  /** Returns false when the alias is a duplicate across groups (caller keeps the input). */
+  const addAlias = (id: string, normalizedAlias: string): boolean => {
+    if (!normalizedAlias) {
+      return false;
+    }
+    if (existingAliasSet.has(normalizedAlias)) {
+      return false;
+    }
+    const next = groups.map((g) =>
+      g.id === id ? { ...g, aliases: [...g.aliases, normalizedAlias] } : g,
+    );
+    setGroups(next);
+    void persistIfEdit({ name, groups: next });
+    return true;
+  };
+
+  const removeAlias = (id: string, alias: string): void => {
+    const next = groups.map((g) =>
+      g.id === id ? { ...g, aliases: g.aliases.filter((a) => a !== alias) } : g,
+    );
+    setGroups(next);
+    void persistIfEdit({ name, groups: next });
   };
 
   const handleDragEnd = (event: DragEndEvent): void => {
@@ -152,33 +219,51 @@ export function GroupingEditor({
     if (!over || active.id === over.id) {
       return;
     }
-    setGroups((prev) => {
-      const oldIndex = prev.findIndex((g) => g.id === active.id);
-      const newIndex = prev.findIndex((g) => g.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) {
-        return prev;
-      }
-      return arrayMove(prev, oldIndex, newIndex);
-    });
+    const oldIndex = groups.findIndex((g) => g.id === active.id);
+    const newIndex = groups.findIndex((g) => g.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) {
+      return;
+    }
+    const next = arrayMove(groups, oldIndex, newIndex);
+    setGroups(next);
+    void persistIfEdit({ name, groups: next });
   };
 
-  const handleSubmit = useCallback(
+  const onSchemeNameBlur = (): void => {
+    const trimmed = name.trim();
+    if (trimmed !== name) {
+      setName(trimmed);
+    }
+    void persistIfEdit({ name: trimmed, groups });
+  };
+
+  const handleCreateSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>): Promise<void> => {
       e.preventDefault();
-      const trimmedName = name.trim();
-      if (validateGroupingSchemeDraft({ name: trimmedName, groups, defaultGroupId }) !== null) {
+      if (mode !== 'create' || !onCreate) {
         return;
       }
-      const normalized = groups.map((g) => ({ id: g.id, name: g.name.trim() }));
-      await Promise.resolve(onSubmit({ name: trimmedName, groups: normalized, defaultGroupId }));
+      const trimmedName = name.trim();
+      const normalized = groups.map(normalizeGroupAliases);
+      if (validateGroupingSchemeDraft({ name: trimmedName, groups: normalized }) !== null) {
+        return;
+      }
+      await Promise.resolve(onCreate({ name: trimmedName, groups: normalized }));
     },
-    [defaultGroupId, groups, name, onSubmit],
+    [groups, mode, name, onCreate],
   );
 
-  const canSubmit = validationError === null;
+  const retry = (): void => {
+    void persistIfEdit({ name, groups });
+  };
+
+  const canCreate = validationError === null;
 
   return (
-    <form className="template-editor grouping-editor" onSubmit={(e) => void handleSubmit(e)}>
+    <form
+      className="template-editor grouping-editor"
+      onSubmit={(e) => void handleCreateSubmit(e)}
+    >
       <div className="template-editor-field">
         <label htmlFor="grouping-editor-name" className="template-editor-label">
           Grouping name
@@ -189,6 +274,7 @@ export function GroupingEditor({
           className="template-editor-name-input"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onBlur={onSchemeNameBlur}
           placeholder="e.g. Weekly groceries"
           autoComplete="off"
           required
@@ -248,11 +334,12 @@ export function GroupingEditor({
                 <SortableGroupingEditorRow
                   key={g.id}
                   group={g}
-                  isDefault={defaultGroupId === g.id}
                   onChangeName={updateName}
-                  onSetDefault={setDefaultGroupId}
-                  onRemove={requestRemoveRow}
-                  canRemove={groups.length > 1 && g.id !== defaultGroupId}
+                  onCommitName={commitGroupName}
+                  onAddAlias={addAlias}
+                  onRemoveAlias={removeAlias}
+                  onRemove={removeRow}
+                  canRemove={groups.length > 1}
                 />
               ))}
             </ul>
@@ -260,35 +347,61 @@ export function GroupingEditor({
         )}
       </DndContext>
 
-      {validationError ? (
+      {validationError && mode === 'create' ? (
         <p className="grouping-editor-validation" role="status">
           Fix validation errors before saving.
         </p>
       ) : null}
 
-      <div className="template-editor-actions">
-        <button type="button" className="modal-btn cancel-btn" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="submit" className="modal-btn primary-submit" disabled={!canSubmit}>
-          {submitLabel}
-        </button>
-      </div>
-
-      <ConfirmModal
-        isOpen={pendingRemove !== null}
-        title="Remove group"
-        message={pendingRemove?.message ?? ''}
-        confirmText="Remove"
-        cancelText="Cancel"
-        onConfirm={() => {
-          if (pendingRemove) {
-            applyRemoveRow(pendingRemove.id);
-          }
-          setPendingRemove(null);
-        }}
-        onCancel={() => setPendingRemove(null)}
-      />
+      {mode === 'edit' ? (
+        <div className="grouping-editor-footer">
+          <GroupingEditorSaveStatus status={saveStatus} onRetry={retry} />
+          {onDone ? (
+            <button type="button" className="modal-btn primary-submit" onClick={onDone}>
+              Done
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="template-editor-actions">
+          <button type="button" className="modal-btn cancel-btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" className="modal-btn primary-submit" disabled={!canCreate}>
+            Create grouping
+          </button>
+        </div>
+      )}
     </form>
+  );
+}
+
+type SaveStatusProps = {
+  status: SaveStatus;
+  onRetry: () => void;
+};
+
+function GroupingEditorSaveStatus({ status, onRetry }: SaveStatusProps): ReactElement {
+  return (
+    <div
+      className={`grouping-editor-save-status grouping-editor-save-status-${status.kind}`}
+      role="status"
+      aria-live="polite"
+    >
+      {status.kind === 'idle' ? <span>All changes saved</span> : null}
+      {status.kind === 'saving' ? <span>Saving…</span> : null}
+      {status.kind === 'saved' ? <span>Saved · {formatClockTime(status.at)}</span> : null}
+      {status.kind === 'held' ? (
+        <span>Unsaved — fix validation errors to continue</span>
+      ) : null}
+      {status.kind === 'error' ? (
+        <>
+          <span>Couldn&apos;t save</span>
+          <button type="button" className="grouping-editor-save-retry" onClick={onRetry}>
+            Retry
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 }

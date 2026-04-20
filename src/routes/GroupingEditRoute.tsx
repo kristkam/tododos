@@ -1,16 +1,12 @@
 import { useCallback, type ReactElement } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
-import { GroupingEditor } from '../components/GroupingEditor';
+import { GroupingEditor, type GroupingEditorPayload } from '../components/GroupingEditor';
 import { useGroupings } from '../contexts/GroupingsContext';
-import { useTodoLists } from '../contexts/TodoListsContext';
-import { useTemplates } from '../contexts/TemplatesContext';
 import type { GroupingScheme, ItemGroup } from '../types';
 import { newClientId } from '../lib/templateItems';
-import { countGroupReferences } from '../lib/countGroupReferences';
 
-function initialSingleGroup(): { groups: ItemGroup[]; defaultGroupId: string } {
-  const id = newClientId();
-  return { groups: [{ id, name: '' }], defaultGroupId: id };
+function makeInitialGroups(): ItemGroup[] {
+  return [{ id: newClientId(), name: '', aliases: [] }];
 }
 
 export function GroupingEditRoute(): ReactElement {
@@ -19,56 +15,35 @@ export function GroupingEditRoute(): ReactElement {
   const isNew = matchNew !== null;
   const navigate = useNavigate();
   const { schemes, loading, createScheme, updateScheme } = useGroupings();
-  const { lists } = useTodoLists();
-  const { templates } = useTemplates();
 
-  const scheme =
-    !isNew && schemeId ? schemes.find((s) => s.id === schemeId) : undefined;
+  const scheme = !isNew && schemeId ? schemes.find((s) => s.id === schemeId) : undefined;
 
-  const buildRemoveGroupMessage = useCallback(
-    (groupId: string): string | null => {
-      if (!scheme) {
-        return null;
-      }
-      const { listItemCount, templateItemCount } = countGroupReferences(scheme.id, groupId, lists, templates);
-      const total = listItemCount + templateItemCount;
-      if (total === 0) {
-        return null;
-      }
-      return `This group is used by ${listItemCount} list item(s) and ${templateItemCount} template item(s). After you save, those items will use the default group until edited. Remove this group?`;
-    },
-    [lists, scheme, templates],
-  );
-
-  const handleSubmit = useCallback(
-    async (payload: { name: string; groups: ItemGroup[]; defaultGroupId: string }): Promise<void> => {
-      if (isNew) {
-        const id = await createScheme({
-          name: payload.name,
-          groups: payload.groups,
-          defaultGroupId: payload.defaultGroupId,
-        });
-        if (id) {
-          navigate('/groupings');
-        }
-        return;
-      }
-      if (!scheme) {
-        return;
-      }
-      const updated: GroupingScheme = {
-        ...scheme,
-        name: payload.name,
-        groups: payload.groups,
-        defaultGroupId: payload.defaultGroupId,
-      };
-      const ok = await updateScheme(updated);
-      if (ok) {
+  const handleCreate = useCallback(
+    async (payload: GroupingEditorPayload): Promise<void> => {
+      const id = await createScheme({ name: payload.name, groups: payload.groups });
+      if (id) {
         navigate('/groupings');
       }
     },
-    [createScheme, isNew, navigate, scheme, updateScheme],
+    [createScheme, navigate],
   );
+
+  const handlePatch = useCallback(
+    async (payload: GroupingEditorPayload): Promise<boolean> => {
+      if (!scheme) {
+        return false;
+      }
+      return updateScheme(
+        { ...scheme, name: payload.name, groups: payload.groups },
+        { silent: true },
+      );
+    },
+    [scheme, updateScheme],
+  );
+
+  const handleDone = useCallback((): void => {
+    navigate('/groupings');
+  }, [navigate]);
 
   const handleCancel = useCallback((): void => {
     navigate('/groupings');
@@ -87,7 +62,11 @@ export function GroupingEditRoute(): ReactElement {
       return (
         <div className="error-panel">
           <p>Grouping not found.</p>
-          <button type="button" className="error-panel-action" onClick={() => navigate('/groupings')}>
+          <button
+            type="button"
+            className="error-panel-action"
+            onClick={() => navigate('/groupings')}
+          >
             Back to groupings
           </button>
         </div>
@@ -95,20 +74,20 @@ export function GroupingEditRoute(): ReactElement {
     }
   }
 
-  const seed = isNew ? initialSingleGroup() : null;
+  const editorScheme: GroupingScheme | undefined = scheme;
 
   return (
     <div className="lists-view template-edit-view">
       <h2 className="section-label">{isNew ? 'New grouping' : 'Edit grouping'}</h2>
       <GroupingEditor
         key={isNew ? 'new' : schemeId}
-        initialName={isNew ? '' : scheme?.name ?? ''}
-        initialGroups={isNew ? seed!.groups : scheme?.groups ?? []}
-        initialDefaultGroupId={isNew ? seed!.defaultGroupId : scheme?.defaultGroupId ?? ''}
-        submitLabel={isNew ? 'Create grouping' : 'Save grouping'}
-        buildRemoveGroupMessage={isNew ? undefined : buildRemoveGroupMessage}
-        onSubmit={(p) => void handleSubmit(p)}
+        mode={isNew ? 'create' : 'edit'}
+        initialName={isNew ? '' : editorScheme?.name ?? ''}
+        initialGroups={isNew ? makeInitialGroups() : editorScheme?.groups ?? []}
+        onCreate={isNew ? (p) => void handleCreate(p) : undefined}
+        onPatch={isNew ? undefined : handlePatch}
         onCancel={handleCancel}
+        onDone={isNew ? undefined : handleDone}
       />
     </div>
   );

@@ -2,8 +2,7 @@ import { useCallback, type ReactElement } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { TemplateEditor } from '../components/TemplateEditor';
 import { useTemplates } from '../contexts/TemplatesContext';
-import { useGroupings } from '../contexts/GroupingsContext';
-import type { ListTemplate } from '../types';
+import type { ListTemplate, TemplateItem } from '../types';
 
 export function TemplateEditRoute(): ReactElement {
   const matchNew = useMatch({ path: '/templates/new', end: true });
@@ -11,19 +10,14 @@ export function TemplateEditRoute(): ReactElement {
   const isNew = matchNew !== null;
   const navigate = useNavigate();
   const { templates, loading, createTemplate, updateTemplate } = useTemplates();
-  const { schemes } = useGroupings();
 
   const template =
     !isNew && templateId ? templates.find((t) => t.id === templateId) : undefined;
 
   const handleSubmit = useCallback(
-    async (payload: { name: string; items: ListTemplate['items']; groupingSchemeId?: string }): Promise<void> => {
+    async (payload: { name: string; items: TemplateItem[] }): Promise<void> => {
       if (isNew) {
-        const id = await createTemplate({
-          name: payload.name,
-          items: payload.items,
-          groupingSchemeId: payload.groupingSchemeId,
-        });
+        const id = await createTemplate({ name: payload.name, items: payload.items });
         if (id) {
           navigate('/templates');
         }
@@ -36,7 +30,6 @@ export function TemplateEditRoute(): ReactElement {
         ...template,
         name: payload.name,
         items: payload.items,
-        groupingSchemeId: template.groupingSchemeId ?? payload.groupingSchemeId,
       };
       const ok = await updateTemplate(updated);
       if (ok) {
@@ -71,18 +64,13 @@ export function TemplateEditRoute(): ReactElement {
     }
   }
 
-  const groupingLocked = Boolean(!isNew && template?.groupingSchemeId);
-
   return (
     <div className="lists-view template-edit-view">
       <h2 className="section-label">{isNew ? 'New template' : 'Edit template'}</h2>
       <TemplateEditor
         key={isNew ? 'new' : templateId}
-        schemes={schemes}
         initialName={isNew ? '' : template?.name ?? ''}
         initialItems={isNew ? [] : template?.items ?? []}
-        initialGroupingSchemeId={isNew ? undefined : template?.groupingSchemeId}
-        groupingLocked={groupingLocked}
         submitLabel={isNew ? 'Create template' : 'Save template'}
         onSubmit={(p) => void handleSubmit(p)}
         onCancel={handleCancel}
