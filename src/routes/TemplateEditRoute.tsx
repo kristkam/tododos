@@ -56,7 +56,7 @@ export function TemplateEditRoute(): ReactElement {
       return (
         <div className="error-panel">
           <p>Template not found.</p>
-          <button type="button" className="error-panel-action" onClick={() => navigate('/templates')}>
+          <button type="button" className="btn btn--primary" onClick={() => navigate('/templates')}>
             Back to templates
           </button>
         </div>
@@ -66,7 +66,7 @@ export function TemplateEditRoute(): ReactElement {
 
   return (
     <div className="lists-view template-edit-view">
-      <h2 className="section-label">{isNew ? 'New template' : 'Edit template'}</h2>
+      <h2 className="template-edit-view-title">{isNew ? 'New template' : 'Edit template'}</h2>
       <TemplateEditor
         key={isNew ? 'new' : templateId}
         initialName={isNew ? '' : template?.name ?? ''}

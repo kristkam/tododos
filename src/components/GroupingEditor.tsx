@@ -265,13 +265,13 @@ export function GroupingEditor({
       onSubmit={(e) => void handleCreateSubmit(e)}
     >
       <div className="template-editor-field">
-        <label htmlFor="grouping-editor-name" className="template-editor-label">
+        <label htmlFor="grouping-editor-name" className="eyebrow">
           Grouping name
         </label>
         <input
           id="grouping-editor-name"
           type="text"
-          className="template-editor-name-input"
+          className="text-field"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={onSchemeNameBlur}
@@ -282,10 +282,10 @@ export function GroupingEditor({
       </div>
 
       <div className="template-editor-items-header">
-        <span className="template-editor-label">Groups</span>
+        <span className="eyebrow">Groups</span>
       </div>
 
-      <div className="add-task" aria-label="Add group">
+      <div className="card add-task" aria-label="Add group">
         <input
           ref={addInputRef}
           type="text"
@@ -322,7 +322,7 @@ export function GroupingEditor({
         modifiers={[restrictToVerticalAxis]}
       >
         {groups.length === 0 ? (
-          <div className="empty-list">Add at least one group above.</div>
+          <div className="empty-state">Add at least one group above.</div>
         ) : (
           <SortableContext
             key={sortableScopeKey}
@@ -357,17 +357,17 @@ export function GroupingEditor({
         <div className="grouping-editor-footer">
           <GroupingEditorSaveStatus status={saveStatus} onRetry={retry} />
           {onDone ? (
-            <button type="button" className="modal-btn primary-submit" onClick={onDone}>
+            <button type="button" className="btn btn--primary" onClick={onDone}>
               Done
             </button>
           ) : null}
         </div>
       ) : (
         <div className="template-editor-actions">
-          <button type="button" className="modal-btn cancel-btn" onClick={onCancel}>
+          <button type="button" className="btn btn--secondary" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" className="modal-btn primary-submit" disabled={!canCreate}>
+          <button type="submit" className="btn btn--primary" disabled={!canCreate}>
             Create grouping
           </button>
         </div>
@@ -397,7 +397,7 @@ function GroupingEditorSaveStatus({ status, onRetry }: SaveStatusProps): ReactEl
       {status.kind === 'error' ? (
         <>
           <span>Couldn&apos;t save</span>
-          <button type="button" className="grouping-editor-save-retry" onClick={onRetry}>
+          <button type="button" className="btn btn--link" onClick={onRetry}>
             Retry
           </button>
         </>

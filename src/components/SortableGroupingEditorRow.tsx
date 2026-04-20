@@ -78,79 +78,81 @@ export function SortableGroupingEditorRow({
 
   return (
     <li ref={setNodeRef} style={style} className="grouping-editor-row-shell">
-      <div className="grouping-editor-row" aria-label={`Group ${displayName}`}>
-        <div className="grouping-editor-row-header">
-          <button
-            type="button"
-            ref={setActivatorNodeRef}
-            className="drag-handle"
-            aria-label={`Reorder group ${displayName}`}
-            {...attributes}
-            {...listeners}
-          >
-            <GripIcon size={18} />
-          </button>
-          <input
-            type="text"
-            className="grouping-editor-name-input"
-            value={group.name}
-            onChange={(e) => onChangeName(group.id, e.target.value)}
-            onBlur={() => onCommitName?.(group.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            placeholder="Group name…"
-            aria-label="Group name"
-            autoComplete="off"
-          />
-          <button
-            type="button"
-            className="icon-btn icon-btn-danger"
-            aria-label={`Remove group ${displayName}`}
-            disabled={!canRemove}
-            title={!canRemove ? 'At least one group is required' : undefined}
-            onClick={() => onRemove(group.id)}
-          >
-            <DeleteIcon size={18} />
-          </button>
-        </div>
-
-        <div className="grouping-editor-aliases-row">
-          <span className="grouping-editor-aliases-label" aria-hidden="true">
-            Also matches
-          </span>
-          <div
-            className="grouping-editor-aliases"
-            role="list"
-            aria-label={`Aliases for ${displayName}`}
-          >
-            {group.aliases.map((alias) => (
-              <span key={alias} role="listitem" className="grouping-editor-alias-chip">
-                <span className="grouping-editor-alias-chip-text">{alias}</span>
-                <button
-                  type="button"
-                  className="grouping-editor-alias-chip-remove"
-                  aria-label={`Remove alias ${alias}`}
-                  onClick={() => onRemoveAlias(group.id, alias)}
-                >
-                  <CancelIcon size={12} />
-                </button>
-              </span>
-            ))}
+      <div className="card grouping-editor-row" aria-label={`Group ${displayName}`}>
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          className="drag-handle grouping-editor-row-handle"
+          aria-label={`Reorder group ${displayName}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripIcon size={18} />
+        </button>
+        <div className="grouping-editor-row-content">
+          <div className="grouping-editor-row-header">
             <input
               type="text"
-              className="grouping-editor-alias-input"
-              value={aliasDraft}
-              onChange={(e) => setAliasDraft(e.target.value)}
-              onKeyDown={handleAliasKeyDown}
-              onBlur={commitAlias}
-              placeholder={group.aliases.length === 0 ? 'e.g. carrot, broccoli' : 'add another…'}
-              aria-label={`Add alias to ${displayName}`}
+              className="text-field grouping-editor-name-input"
+              value={group.name}
+              onChange={(e) => onChangeName(group.id, e.target.value)}
+              onBlur={() => onCommitName?.(group.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="Group name…"
+              aria-label="Group name"
               autoComplete="off"
             />
+            <button
+              type="button"
+              className="btn btn--icon btn--danger"
+              aria-label={`Remove group ${displayName}`}
+              disabled={!canRemove}
+              title={!canRemove ? 'At least one group is required' : undefined}
+              onClick={() => onRemove(group.id)}
+            >
+              <DeleteIcon size={18} />
+            </button>
+          </div>
+
+          <div className="grouping-editor-aliases-row">
+            <span className="eyebrow grouping-editor-aliases-label" aria-hidden="true">
+              Also matches
+            </span>
+            <div
+              className="grouping-editor-aliases"
+              role="list"
+              aria-label={`Aliases for ${displayName}`}
+            >
+              {group.aliases.map((alias) => (
+                <span key={alias} role="listitem" className="grouping-editor-alias-chip">
+                  <span className="grouping-editor-alias-chip-text">{alias}</span>
+                  <button
+                    type="button"
+                    className="grouping-editor-alias-chip-remove"
+                    aria-label={`Remove alias ${alias}`}
+                    onClick={() => onRemoveAlias(group.id, alias)}
+                  >
+                    <CancelIcon size={12} />
+                  </button>
+                </span>
+              ))}
+              <input
+                type="text"
+                className="grouping-editor-alias-input"
+                value={aliasDraft}
+                onChange={(e) => setAliasDraft(e.target.value)}
+                onKeyDown={handleAliasKeyDown}
+                onBlur={commitAlias}
+                placeholder={group.aliases.length === 0 ? 'e.g. carrot, broccoli' : 'add another…'}
+                aria-label={`Add alias to ${displayName}`}
+                autoComplete="off"
+              />
+            </div>
           </div>
         </div>
       </div>

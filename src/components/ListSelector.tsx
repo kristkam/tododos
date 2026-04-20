@@ -56,8 +56,8 @@ export function ListSelector({
 
   return (
     <div className="lists-view">
-      <div className="add-list-card">
-        <label htmlFor={NEW_LIST_INPUT_ID} className="add-list-card-eyebrow">
+      <div className="card add-list-card">
+        <label htmlFor={NEW_LIST_INPUT_ID} className="eyebrow">
           New list
         </label>
         <form className="add-list" onSubmit={onAddListSubmit} aria-label="Create a new list">
@@ -74,7 +74,7 @@ export function ListSelector({
           />
           <button
             type="submit"
-            className="add-list-submit"
+            className="btn btn--primary"
             disabled={!canCreateList}
             onMouseDown={(e) => {
               if (!canCreateList) {
@@ -89,7 +89,7 @@ export function ListSelector({
         <div className="add-list-secondary add-list-links">
           {onStartFromTemplate ? (
             <>
-              <button type="button" className="add-list-from-template" onClick={onStartFromTemplate}>
+              <button type="button" className="btn btn--link" onClick={onStartFromTemplate}>
                 Start from template
               </button>
               <span className="add-list-links-sep" aria-hidden>
@@ -101,33 +101,38 @@ export function ListSelector({
         </div>
       </div>
 
-      <h2 className="section-label">Your lists</h2>
+      <h2 className="eyebrow lists-view-heading">Your lists</h2>
 
       {lists.length === 0 ? (
-        <div className="empty-lists">No lists yet. Create your first list!</div>
+        <div className="empty-state">No lists yet. Create your first list!</div>
       ) : (
         <ul className="list-rows">
-          {lists.map((list) => (
-            <li key={list.id} className="list-rows-item">
-              <div className={`list-row-card ${currentListId === list.id ? 'is-active' : ''}`}>
-                <button type="button" className="list-row-main" onClick={() => onSelectList(list.id)}>
-                  <div className="list-row-title">{list.name}</div>
-                  <div className="list-row-subtitle">
-                    {list.items.length} {list.items.length === 1 ? 'item' : 'items'} · Updated{' '}
-                    {formatListUpdatedDate(list.updatedAt)}
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn-danger list-row-delete"
-                  aria-label={`Delete list ${list.name}`}
-                  onClick={() => onDeleteList(list.id)}
+          {lists.map((list) => {
+            const isActive = currentListId === list.id;
+            return (
+              <li key={list.id} className="list-rows-item">
+                <div
+                  className={`card card--interactive list-row-card${isActive ? ' card--active' : ''}`}
                 >
-                  <DeleteIcon size={18} />
-                </button>
-              </div>
-            </li>
-          ))}
+                  <button type="button" className="list-row-main" onClick={() => onSelectList(list.id)}>
+                    <div className="list-row-title">{list.name}</div>
+                    <div className="list-row-subtitle">
+                      {list.items.length} {list.items.length === 1 ? 'item' : 'items'} · Updated{' '}
+                      {formatListUpdatedDate(list.updatedAt)}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--icon btn--danger list-row-delete"
+                    aria-label={`Delete list ${list.name}`}
+                    onClick={() => onDeleteList(list.id)}
+                  >
+                    <DeleteIcon size={18} />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

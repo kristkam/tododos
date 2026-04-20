@@ -104,7 +104,7 @@ export function TemplatePickerModal({
             </div>
           ) : (
             <form id="template-picker-form" onSubmit={(e) => void submit(e)}>
-              <label className="template-picker-label" htmlFor="template-picker-select">
+              <label className="eyebrow template-picker-label" htmlFor="template-picker-select">
                 Template
               </label>
               <select
@@ -125,13 +125,13 @@ export function TemplatePickerModal({
                 ))}
               </select>
 
-              <label className="template-picker-label" htmlFor={NEW_LIST_NAME_INPUT_ID}>
+              <label className="eyebrow template-picker-label" htmlFor={NEW_LIST_NAME_INPUT_ID}>
                 New list name
               </label>
               <input
                 id={NEW_LIST_NAME_INPUT_ID}
                 type="text"
-                className="template-picker-name-input"
+                className="text-field"
                 value={listName}
                 onChange={(e) => setListName(e.target.value)}
                 placeholder="Name for your new list…"
@@ -150,14 +150,14 @@ export function TemplatePickerModal({
             </Link>
           </div>
           <div className="template-picker-footer-buttons">
-            <button type="button" onClick={onClose} className="modal-btn cancel-btn">
+            <button type="button" onClick={onClose} className="btn btn--secondary">
               Cancel
             </button>
             {!templatesLoading && templates.length > 0 ? (
               <button
                 type="submit"
                 form="template-picker-form"
-                className="modal-btn primary-submit"
+                className="btn btn--primary"
                 disabled={!canCreateList}
               >
                 Create list

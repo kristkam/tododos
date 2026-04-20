@@ -81,7 +81,7 @@ export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps
           onChange={(e) => setEditText(e.target.value)}
           onKeyDown={handleEditKeyDown}
           onBlur={handleBlur}
-          className="task-row-edit"
+          className="text-field task-row-edit"
           aria-label="Edit task text"
           enterKeyHint="done"
         />
@@ -93,7 +93,7 @@ export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps
           <div className="task-row-actions">
             <button
               type="button"
-              className="icon-btn"
+              className="btn btn--icon"
               aria-label={`Edit ${item.text}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -104,7 +104,7 @@ export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps
             </button>
             <button
               type="button"
-              className="icon-btn icon-btn-danger"
+              className="btn btn--icon btn--danger"
               aria-label={`Delete ${item.text}`}
               onClick={(e) => {
                 e.stopPropagation();

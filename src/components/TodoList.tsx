@@ -398,26 +398,42 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
   const activeGroupingValue = list.activeGroupingId ?? GROUPING_PICKER_NONE;
 
+  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  const progressLabel =
+    totalCount === 0
+      ? 'No tasks yet'
+      : `${completedCount} of ${totalCount} tasks completed`;
+
   return (
     <div className="todo-view">
       <header className="todo-view-header">
         <h1 className="todo-view-title">{list.name}</h1>
-        <div className="todo-view-meta">
-          <span className="todo-view-progress">
-            {completedCount} of {totalCount} completed
-          </span>
-          <div className="todo-view-meta-actions">
-            {headerActions}
-            <button
-              type="button"
-              onClick={cycleSortOrder}
-              className="icon-btn"
-              title={`Currently: ${getSortLabel()}. Click to change sorting.`}
-              aria-label={`Sort todos. Currently ${getSortLabel()}`}
-            >
-              {getSortIcon()}
-            </button>
-          </div>
+
+        <div
+          className="todo-view-progress"
+          role="progressbar"
+          aria-label={progressLabel}
+          aria-valuemin={0}
+          aria-valuemax={totalCount}
+          aria-valuenow={completedCount}
+        >
+          <div
+            className="todo-view-progress-fill"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        <div className="todo-view-controls">
+          <button
+            type="button"
+            onClick={cycleSortOrder}
+            className="btn btn--secondary btn--sm todo-view-sort"
+            aria-label={`Sort order. Currently ${getSortLabel()}. Click to change.`}
+          >
+            {getSortIcon()}
+            <span>{getSortLabel()}</span>
+          </button>
+          {headerActions}
         </div>
 
         <div className="todo-view-grouping">
@@ -442,7 +458,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
           {canSaveOrderToScheme ? (
             <button
               type="button"
-              className="todo-view-grouping-save-order"
+              className="btn btn--ghost btn--sm"
               onClick={() => void handleSaveOrderToScheme()}
               title="Promote this list's group order to the scheme's default"
             >
@@ -464,7 +480,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
         </div>
       ) : null}
 
-      <form className="add-task" onSubmit={onAddTaskSubmit}>
+      <form className="card add-task" onSubmit={onAddTaskSubmit}>
         <input
           ref={addTaskInputRef}
           type="text"
@@ -498,7 +514,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
         modifiers={[restrictToVerticalAxis]}
       >
         {sortedItems.length === 0 ? (
-          <div className="empty-list">No items yet. Add your first task above!</div>
+          <div className="empty-state">No items yet. Add your first task above!</div>
         ) : matched && scheme ? (
           <div className="todo-grouped-sections">
             <SortableContext

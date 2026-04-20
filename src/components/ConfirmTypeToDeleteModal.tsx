@@ -76,7 +76,7 @@ export function ConfirmTypeToDeleteModal({
           <input
             id={inputId}
             type="text"
-            className="confirm-phrase-input"
+            className="text-field"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             autoComplete="off"
@@ -85,13 +85,13 @@ export function ConfirmTypeToDeleteModal({
           />
         </div>
         <div className="modal-footer">
-          <button type="button" onClick={handleCancel} className="modal-btn cancel-btn" autoFocus>
+          <button type="button" onClick={handleCancel} className="btn btn--secondary" autoFocus>
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="modal-btn confirm-btn"
+            className="btn btn--danger"
             disabled={!matches}
           >
             {confirmText}

@@ -53,12 +53,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="modal-btn cancel-btn"
+            className="btn btn--secondary"
             autoFocus
           >
             {cancelText}
           </button>
-          <button type="button" onClick={onConfirm} className="modal-btn confirm-btn">
+          <button type="button" onClick={onConfirm} className="btn btn--danger">
             {confirmText}
           </button>
         </div>

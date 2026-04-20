@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { DeleteIcon, EditIcon } from '../components/icons';
 import { useGroupings } from '../contexts/GroupingsContext';
 import { useTodoLists } from '../contexts/TodoListsContext';
 import type { GroupingScheme } from '../types';
@@ -92,8 +93,8 @@ export function GroupingsRoute(): ReactElement {
     <>
       <div className="lists-view templates-view">
         <div className="templates-view-header">
-          <h2 className="section-label templates-view-title">Groupings</h2>
-          <Link to="/groupings/new" className="templates-new-link">
+          <h2 className="templates-view-title">Groupings</h2>
+          <Link to="/groupings/new" className="btn btn--primary">
             New grouping
           </Link>
         </div>
@@ -102,7 +103,7 @@ export function GroupingsRoute(): ReactElement {
         </p>
 
         {schemes.length === 0 ? (
-          <div className="empty-lists">
+          <div className="empty-state">
             No groupings yet. <Link to="/groupings/new">Create your first grouping</Link>.
           </div>
         ) : (
@@ -111,7 +112,7 @@ export function GroupingsRoute(): ReactElement {
               const affected = affectedListsByScheme.get(scheme.id) ?? [];
               return (
                 <li key={scheme.id} className="list-rows-item">
-                  <div className="list-row-card template-row-card">
+                  <div className="card list-row-card template-row-card">
                     <div className="template-row-main">
                       <div className="list-row-title">{scheme.name}</div>
                       <div className="list-row-subtitle">
@@ -123,17 +124,19 @@ export function GroupingsRoute(): ReactElement {
                     <div className="template-row-actions">
                       <button
                         type="button"
-                        className="template-row-edit"
+                        className="btn btn--icon"
+                        aria-label={`Edit grouping ${scheme.name}`}
                         onClick={() => navigate(`/groupings/${scheme.id}/edit`)}
                       >
-                        Edit
+                        <EditIcon size={18} />
                       </button>
                       <button
                         type="button"
-                        className="template-row-destroy"
+                        className="btn btn--icon btn--danger"
+                        aria-label={`Delete grouping ${scheme.name}`}
                         onClick={() => requestDelete(scheme.id)}
                       >
-                        Delete
+                        <DeleteIcon size={18} />
                       </button>
                     </div>
                   </div>

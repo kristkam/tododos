@@ -64,7 +64,7 @@ export function GroupingEditRoute(): ReactElement {
           <p>Grouping not found.</p>
           <button
             type="button"
-            className="error-panel-action"
+            className="btn btn--primary"
             onClick={() => navigate('/groupings')}
           >
             Back to groupings
@@ -78,7 +78,7 @@ export function GroupingEditRoute(): ReactElement {
 
   return (
     <div className="lists-view template-edit-view">
-      <h2 className="section-label">{isNew ? 'New grouping' : 'Edit grouping'}</h2>
+      <h2 className="template-edit-view-title">{isNew ? 'New grouping' : 'Edit grouping'}</h2>
       <GroupingEditor
         key={isNew ? 'new' : schemeId}
         mode={isNew ? 'create' : 'edit'}

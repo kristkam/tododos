@@ -54,7 +54,7 @@ export function SortableTemplateEditorRow({
         {dragHandle}
         <input
           type="text"
-          className="task-row-edit"
+          className="text-field task-row-edit"
           value={item.text}
           onChange={(e) => onChangeText(item.id, e.target.value)}
           onKeyDown={(e) => {
@@ -69,7 +69,7 @@ export function SortableTemplateEditorRow({
         <div className="task-row-actions">
           <button
             type="button"
-            className="icon-btn icon-btn-danger"
+            className="btn btn--icon btn--danger"
             aria-label={removeLabel}
             onClick={() => onRemove(item.id)}
           >

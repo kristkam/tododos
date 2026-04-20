@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ConfirmTypeToDeleteModal } from '../components/ConfirmTypeToDeleteModal';
+import { DeleteIcon, EditIcon } from '../components/icons';
 import { useTemplates } from '../contexts/TemplatesContext';
 import type { ListTemplate } from '../types';
 
@@ -54,8 +55,8 @@ export function TemplatesRoute(): ReactElement {
     <>
       <div className="lists-view templates-view">
         <div className="templates-view-header">
-          <h2 className="section-label templates-view-title">Templates</h2>
-          <Link to="/templates/new" className="templates-new-link">
+          <h2 className="templates-view-title">Templates</h2>
+          <Link to="/templates/new" className="btn btn--primary">
             New template
           </Link>
         </div>
@@ -64,7 +65,7 @@ export function TemplatesRoute(): ReactElement {
         </p>
 
         {templates.length === 0 ? (
-          <div className="empty-lists">
+          <div className="empty-state">
             No templates yet.{' '}
             <Link to="/templates/new">Create your first template</Link>.
           </div>
@@ -72,7 +73,7 @@ export function TemplatesRoute(): ReactElement {
           <ul className="list-rows">
             {templates.map((template) => (
               <li key={template.id} className="list-rows-item">
-                <div className="list-row-card template-row-card">
+                <div className="card list-row-card template-row-card">
                   <div className="template-row-main">
                     <div className="list-row-title">{template.name}</div>
                     <div className="list-row-subtitle">
@@ -83,17 +84,19 @@ export function TemplatesRoute(): ReactElement {
                   <div className="template-row-actions">
                     <button
                       type="button"
-                      className="template-row-edit"
+                      className="btn btn--icon"
+                      aria-label={`Edit template ${template.name}`}
                       onClick={() => navigate(`/templates/${template.id}/edit`)}
                     >
-                      Edit
+                      <EditIcon size={18} />
                     </button>
                     <button
                       type="button"
-                      className="template-row-destroy"
+                      className="btn btn--icon btn--danger"
+                      aria-label={`Delete template ${template.name}`}
                       onClick={() => requestDelete(template.id)}
                     >
-                      Delete
+                      <DeleteIcon size={18} />
                     </button>
                   </div>
                 </div>

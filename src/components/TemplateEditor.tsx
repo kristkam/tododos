@@ -154,13 +154,13 @@ export function TemplateEditor({
   return (
     <form className="template-editor" onSubmit={(e) => void handleSubmit(e)}>
       <div className="template-editor-field">
-        <label htmlFor="template-editor-name" className="template-editor-label">
+        <label htmlFor="template-editor-name" className="eyebrow">
           Template name
         </label>
         <input
           id="template-editor-name"
           type="text"
-          className="template-editor-name-input"
+          className="text-field"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Weekly groceries"
@@ -170,10 +170,10 @@ export function TemplateEditor({
       </div>
 
       <div className="template-editor-items-header">
-        <span className="template-editor-label">Items</span>
+        <span className="eyebrow">Items</span>
       </div>
 
-      <div className="add-task" aria-label="Add template item">
+      <div className="card add-task" aria-label="Add template item">
         <input
           ref={addItemInputRef}
           type="text"
@@ -210,7 +210,7 @@ export function TemplateEditor({
         modifiers={[restrictToVerticalAxis]}
       >
         {items.length === 0 ? (
-          <div className="empty-list">No items yet. Add your first item above!</div>
+          <div className="empty-state">No items yet. Add your first item above!</div>
         ) : (
           <SortableContext
             key={sortableScopeKey}
@@ -232,10 +232,10 @@ export function TemplateEditor({
       </DndContext>
 
       <div className="template-editor-actions">
-        <button type="button" className="modal-btn cancel-btn" onClick={onCancel}>
+        <button type="button" className="btn btn--secondary" onClick={onCancel}>
           Cancel
         </button>
-        <button type="submit" className="modal-btn primary-submit">
+        <button type="submit" className="btn btn--primary">
           {submitLabel}
         </button>
       </div>

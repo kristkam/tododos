@@ -49,7 +49,7 @@ export function ListRoute(): ReactElement {
     return (
       <div className="error-panel">
         <p>List not found.</p>
-        <button type="button" className="error-panel-action" onClick={() => navigate('/')}>
+        <button type="button" className="btn btn--primary" onClick={() => navigate('/')}>
           Back to lists
         </button>
       </div>
@@ -63,7 +63,7 @@ export function ListRoute(): ReactElement {
       headerActions={
         <button
           type="button"
-          className="todo-view-header-action"
+          className="btn btn--ghost btn--sm"
           onClick={() => void handleSaveAsTemplate()}
         >
           Save as template

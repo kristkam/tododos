@@ -18,7 +18,7 @@ export function ThemeToggle(): ReactElement {
   return (
     <button
       type="button"
-      className="theme-toggle"
+      className="btn btn--icon btn--icon-lg theme-toggle"
       onClick={toggleTheme}
       title={`Theme: ${themeModeLabel(theme)}. Click to switch.`}
       aria-label={`Theme: ${themeModeLabel(theme)}. Click to switch between light and dark.`}

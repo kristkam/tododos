@@ -22,7 +22,12 @@ export function AppShell(): ReactElement {
       <header className="app-header">
         <div className="app-header-start">
           {showBack ? (
-            <button type="button" className="back-btn" onClick={goHome} aria-label="Back to lists">
+            <button
+              type="button"
+              className="btn btn--icon btn--icon-lg back-btn"
+              onClick={goHome}
+              aria-label="Back to lists"
+            >
               <BackArrowIcon size={20} />
             </button>
           ) : (
