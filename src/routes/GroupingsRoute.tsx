@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ConfirmModal } from '../components/ConfirmModal';
+import { ConfirmTypeToDeleteModal } from '../components/ConfirmTypeToDeleteModal';
 import { DeleteIcon, EditIcon } from '../components/icons';
 import { useGroupings } from '../contexts/GroupingsContext';
 import { useTodoLists } from '../contexts/TodoListsContext';
@@ -151,12 +151,12 @@ export function GroupingsRoute(): ReactElement {
         </p>
       </div>
 
-      <ConfirmModal
+      <ConfirmTypeToDeleteModal
         isOpen={schemeToDelete !== null}
         title="Delete grouping"
         message={deleteMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmPhrase={schemeToDelete?.name ?? ''}
+        confirmText="Delete grouping"
         onConfirm={() => {
           void confirmDelete();
         }}
