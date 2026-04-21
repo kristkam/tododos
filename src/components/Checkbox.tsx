@@ -25,7 +25,7 @@ export function Checkbox({ checked, onChange, label }: CheckboxProps): ReactElem
       }}
     >
       {checked ? (
-        <span className="task-checkbox-check" aria-hidden>
+        <span className="task-checkbox-check task-checkbox-check--enter" aria-hidden>
           <CheckIcon size={14} color="currentColor" />
         </span>
       ) : null}

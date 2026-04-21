@@ -35,6 +35,7 @@ type FirestoreTodoItem = {
   completed: boolean;
   createdAt: Timestamp;
   order?: number;
+  completedAt?: Timestamp;
 };
 
 const convertFirestoreToTodoList = (docSnap: QueryDocumentSnapshot<DocumentData>): TodoList => {
@@ -43,13 +44,19 @@ const convertFirestoreToTodoList = (docSnap: QueryDocumentSnapshot<DocumentData>
   const list: TodoList = {
     id: docSnap.id,
     name: data.name,
-    items: rawItems.map((item): TodoItem => ({
-      id: item.id,
-      text: item.text,
-      completed: item.completed,
-      createdAt: item.createdAt.toDate(),
-      order: item.order,
-    })),
+    items: rawItems.map((item): TodoItem => {
+      const row: TodoItem = {
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+        createdAt: item.createdAt.toDate(),
+        order: item.order,
+      };
+      if (item.completedAt !== undefined) {
+        row.completedAt = item.completedAt.toDate();
+      }
+      return row;
+    }),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
     sortBy: data.sortBy ?? 'normal',
@@ -75,6 +82,9 @@ const convertTodoListToFirestore = (list: Omit<TodoList, 'id'>): FirestoreTodoLi
       };
       if (item.order !== undefined) {
         row.order = item.order;
+      }
+      if (item.completedAt !== undefined) {
+        row.completedAt = Timestamp.fromDate(item.completedAt);
       }
       return row;
     }),

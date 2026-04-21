@@ -23,6 +23,8 @@ export function SortableTodoItem({ item, onUpdate, onDelete }: SortableTodoItemP
   } = useSortable({
     id: item.id,
     data: { type: 'item' },
+    // Few rows: default 200ms transform easing fights collision updates and feels laggy.
+    transition: null,
   });
 
   const style: CSSProperties = {

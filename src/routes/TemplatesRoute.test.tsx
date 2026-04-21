@@ -40,8 +40,8 @@ describe('TemplatesRoute', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /^delete$/i }));
-    const confirmBtn = screen.getByRole('button', { name: /delete template/i });
+    await user.click(screen.getByRole('button', { name: /delete template my template/i }));
+    const confirmBtn = screen.getByRole('button', { name: /^Delete template$/ });
     expect(confirmBtn).toBeDisabled();
 
     await user.type(screen.getByRole('textbox'), 'My Templat');

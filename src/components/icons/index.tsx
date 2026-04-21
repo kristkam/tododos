@@ -271,3 +271,36 @@ export const CloseIcon: React.FC<IconProps> = ({ size = 18, className = '', colo
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
+
+/** Vertical overflow / more menu (three dots). */
+export const MoreVerticalIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={color}
+    className={className}
+    aria-hidden
+  >
+    <circle cx="12" cy="5" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="12" cy="19" r="2" />
+  </svg>
+);
+
+export const ChevronRightIcon: React.FC<IconProps> = ({ size = 18, className = '', color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);

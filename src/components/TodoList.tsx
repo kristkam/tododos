@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useOptimistic,
   useRef,
@@ -15,15 +16,9 @@ import { Link } from 'react-router-dom';
 import type { TodoList as TodoListType, TodoItem as TodoItemType, SortOption, GroupingScheme } from '../types';
 import { SortableTodoItem } from './SortableTodoItem';
 import { SortableSection } from './SortableSection';
-import {
-  CheckIcon,
-  SortUnsortedIcon,
-  SortCompletedTopIcon,
-  SortCompletedBottomIcon,
-} from './icons';
+import { CheckIcon, ChevronRightIcon } from './icons';
 import {
   DndContext,
-  closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -41,11 +36,13 @@ import { sortItems } from '../lib/sortItems';
 import { applyTodoItemsAction, type TodoItemsOptimisticAction } from '../lib/todoItemsReducer';
 import { useGroupings } from '../contexts/GroupingsContext';
 import { matchItemsToGroups, type MatchResult } from '../lib/matchItemsToGroups';
+import { sortablePointerFirstCollision } from '../lib/sortableListCollision';
+import { TodoViewMenu } from './TodoViewMenu';
 
 type TodoListProps = {
   list: TodoListType;
   onUpdateList: (list: TodoListType) => void | Promise<void>;
-  /** Optional controls shown in the header row next to sort (e.g. save as template). */
+  /** Optional controls shown in the header row (e.g. save as template). */
   headerActions?: ReactNode;
 };
 
@@ -128,10 +125,15 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
   const schemeMissing = Boolean(list.activeGroupingId) && !scheme;
 
+  /** Until the parent commits `list.groupOrder`, keep UI in sync with the last drop (avoids section snap-back). */
+  const [optimisticGroupOrder, setOptimisticGroupOrder] = useState<readonly string[] | undefined>(undefined);
+  const effectiveGroupOrder = optimisticGroupOrder ?? list.groupOrder;
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 6,
+        // Shorter lists feel sluggish if the drag only arms after a long move.
+        distance: 4,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -143,14 +145,27 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     setSortBy(list.sortBy);
   }, [list.id, list.sortBy]);
 
+  useEffect(() => {
+    setOptimisticGroupOrder(undefined);
+  }, [list.id, list.activeGroupingId]);
+
+  useEffect(() => {
+    if (optimisticGroupOrder === undefined || !list.groupOrder) {
+      return;
+    }
+    if (arraysEqual(list.groupOrder, optimisticGroupOrder)) {
+      setOptimisticGroupOrder(undefined);
+    }
+  }, [list.groupOrder, optimisticGroupOrder]);
+
   const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
 
   const matched: MatchResult | null = useMemo(() => {
     if (!scheme) {
       return null;
     }
-    return matchItemsToGroups(sortedItems, scheme, list.groupOrder);
-  }, [scheme, sortedItems, list.groupOrder]);
+    return matchItemsToGroups(sortedItems, scheme, effectiveGroupOrder);
+  }, [scheme, sortedItems, effectiveGroupOrder]);
 
   const visibleSections = useMemo(
     () => (matched ? matched.sections.filter((s) => s.items.length > 0) : []),
@@ -158,14 +173,17 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   );
 
   const canSaveOrderToScheme = useMemo(() => {
-    if (!scheme || !list.groupOrder || list.groupOrder.length === 0) {
+    if (!scheme || !effectiveGroupOrder || effectiveGroupOrder.length === 0) {
       return false;
     }
     const canonical = scheme.groups.map((g) => g.id);
-    return !arraysEqual(canonical, list.groupOrder);
-  }, [scheme, list.groupOrder]);
+    return !arraysEqual(canonical, effectiveGroupOrder);
+  }, [scheme, effectiveGroupOrder]);
 
   const sortableScopeKey = useMemo(() => [...sortedItems.map((i) => i.id)].sort().join('|'), [sortedItems]);
+
+  const otherSectionItemsId = useId();
+  const [otherSectionExpanded, setOtherSectionExpanded] = useState(true);
 
   const runItemsMutation = useCallback(
     (action: TodoItemsOptimisticAction): void => {
@@ -182,19 +200,19 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     [addOptimisticItems, onUpdateList, startTransition],
   );
 
-  const cycleSortOrder = (): void => {
-    const nextSort: SortOption =
-      sortBy === 'normal' ? 'completed-top' : sortBy === 'completed-top' ? 'completed-bottom' : 'normal';
-
-    setSortBy(nextSort);
-    startTransition(() => {
-      void onUpdateList({
-        ...list,
-        sortBy: nextSort,
-        updatedAt: new Date(),
+  const setSortFromMenu = useCallback(
+    (next: SortOption): void => {
+      setSortBy(next);
+      startTransition(() => {
+        void onUpdateList({
+          ...listRef.current,
+          sortBy: next,
+          updatedAt: new Date(),
+        });
       });
-    });
-  };
+    },
+    [onUpdateList, startTransition],
+  );
 
   const selectGrouping = (nextSchemeId: string): void => {
     const current = list.activeGroupingId ?? '';
@@ -218,6 +236,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   };
 
   const persistGroupOrder = (order: string[]): void => {
+    setOptimisticGroupOrder(order);
     startTransition(() => {
       void onUpdateList({
         ...listRef.current,
@@ -228,38 +247,18 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   };
 
   const handleSaveOrderToScheme = async (): Promise<void> => {
-    if (!scheme || !list.groupOrder) {
+    const orderToPersist = optimisticGroupOrder ?? list.groupOrder;
+    if (!scheme || !orderToPersist) {
       return;
     }
-    const ok = await reorderSchemeGroups(scheme.id, list.groupOrder);
+    const ok = await reorderSchemeGroups(scheme.id, orderToPersist);
     if (ok) {
+      setOptimisticGroupOrder(undefined);
       startTransition(() => {
         const next: TodoListType = { ...listRef.current, updatedAt: new Date() };
         delete next.groupOrder;
         void onUpdateList(next);
       });
-    }
-  };
-
-  const getSortIcon = (): ReactElement => {
-    switch (sortBy) {
-      case 'completed-top':
-        return <SortCompletedTopIcon size={20} />;
-      case 'completed-bottom':
-        return <SortCompletedBottomIcon size={20} />;
-      case 'normal':
-        return <SortUnsortedIcon size={20} />;
-    }
-  };
-
-  const getSortLabel = (): string => {
-    switch (sortBy) {
-      case 'completed-top':
-        return 'Finished First';
-      case 'completed-bottom':
-        return 'Finished Last';
-      case 'normal':
-        return 'Unsorted';
     }
   };
 
@@ -324,24 +323,37 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
   const completedCount = optimisticItems.filter((item) => item.completed).length;
   const totalCount = optimisticItems.length;
+  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  const progressLabel =
+    totalCount === 0
+      ? 'No tasks yet'
+      : `${completedCount} of ${totalCount} tasks completed`;
 
-  const handleFlatDragEnd = (event: DragEndEvent, sorted: readonly TodoItemType[]): void => {
-    const { active, over } = event;
+  const handleFlatDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      const { active, over } = event;
 
-    if (over && active.id !== over.id) {
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const sorted = sortItems(optimisticItemsRef.current, sortBy);
       const oldIndex = sorted.findIndex((item) => item.id === active.id);
       const newIndex = sorted.findIndex((item) => item.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) {
+        return;
+      }
 
       const reorderedItems = arrayMove([...sorted], oldIndex, newIndex);
-
       const itemsWithOrder = reorderedItems.map((item, index) => ({
         ...item,
         order: index,
       }));
 
       runItemsMutation({ type: 'reorder', items: itemsWithOrder });
-    }
-  };
+    },
+    [runItemsMutation, sortBy],
+  );
 
   const handleGroupedDragEnd = (event: DragEndEvent, result: MatchResult): void => {
     const { active, over } = event;
@@ -393,21 +405,21 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
       handleGroupedDragEnd(event, matched);
       return;
     }
-    handleFlatDragEnd(event, sortedItems);
+    handleFlatDragEnd(event);
   };
 
   const activeGroupingValue = list.activeGroupingId ?? GROUPING_PICKER_NONE;
 
-  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-  const progressLabel =
-    totalCount === 0
-      ? 'No tasks yet'
-      : `${completedCount} of ${totalCount} tasks completed`;
-
   return (
     <div className="todo-view">
       <header className="todo-view-header">
-        <h1 className="todo-view-title">{list.name}</h1>
+        <div className="todo-view-header-top">
+          <h1 className="todo-view-title">{list.name}</h1>
+          <div className="todo-view-header-actions">
+            <TodoViewMenu sortBy={sortBy} onChangeSort={setSortFromMenu} />
+            {headerActions}
+          </div>
+        </div>
 
         <div
           className="todo-view-progress"
@@ -417,23 +429,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
           aria-valuemax={totalCount}
           aria-valuenow={completedCount}
         >
-          <div
-            className="todo-view-progress-fill"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        <div className="todo-view-controls">
-          <button
-            type="button"
-            onClick={cycleSortOrder}
-            className="btn btn--secondary btn--sm todo-view-sort"
-            aria-label={`Sort order. Currently ${getSortLabel()}. Click to change.`}
-          >
-            {getSortIcon()}
-            <span>{getSortLabel()}</span>
-          </button>
-          {headerActions}
+          <div className="todo-view-progress-fill" style={{ width: `${progressPercent}%` }} />
         </div>
 
         <div className="todo-view-grouping">
@@ -509,7 +505,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={sortablePointerFirstCollision}
         onDragEnd={onDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
@@ -517,10 +513,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
           <div className="empty-state">No items yet. Add your first task above!</div>
         ) : matched && scheme ? (
           <div className="todo-grouped-sections">
-            <SortableContext
-              items={visibleSections.map((s) => s.group.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={visibleSections.map((s) => s.group.id)} strategy={verticalListSortingStrategy}>
               {visibleSections.map((section) => (
                 <SortableSection
                   key={section.group.id}
@@ -529,10 +522,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
                   count={section.items.length}
                 >
                   <ul className="task-rows">
-                    <SortableContext
-                      items={section.items.map((i) => i.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
+                    <SortableContext items={section.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       {section.items.map((item) => (
                         <SortableTodoItem
                           key={item.id}
@@ -548,7 +538,23 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
             </SortableContext>
             {matched.other.length > 0 ? (
               <section className="task-section task-section-other" aria-label="Other section">
-                <header className="task-section-header task-section-header-static">
+                <header className="task-section-header">
+                  <span className="task-section-drag-placeholder" aria-hidden />
+                  <button
+                    type="button"
+                    className="task-section-toggle"
+                    aria-expanded={otherSectionExpanded}
+                    aria-controls={otherSectionItemsId}
+                    onClick={() => {
+                      setOtherSectionExpanded((v) => !v);
+                    }}
+                    aria-label={otherSectionExpanded ? 'Collapse Other tasks' : 'Expand Other tasks'}
+                  >
+                    <ChevronRightIcon
+                      size={18}
+                      className={`task-section-toggle-chevron${otherSectionExpanded ? ' task-section-toggle-chevron--expanded' : ''}`}
+                    />
+                  </button>
                   <h3 className="task-section-title">
                     <span className="task-section-title-text">Other</span>
                     <span
@@ -559,30 +565,25 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
                     </span>
                   </h3>
                 </header>
-                <ul className="task-rows">
-                  <SortableContext
-                    items={matched.other.map((i) => i.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {matched.other.map((item) => (
-                      <SortableTodoItem
-                        key={item.id}
-                        item={item}
-                        onUpdate={updateItem}
-                        onDelete={deleteItem}
-                      />
-                    ))}
-                  </SortableContext>
-                </ul>
+                <div id={otherSectionItemsId} className="task-section-items" hidden={!otherSectionExpanded}>
+                  <ul className="task-rows">
+                    <SortableContext items={matched.other.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                      {matched.other.map((item) => (
+                        <SortableTodoItem
+                          key={item.id}
+                          item={item}
+                          onUpdate={updateItem}
+                          onDelete={deleteItem}
+                        />
+                      ))}
+                    </SortableContext>
+                  </ul>
+                </div>
               </section>
             ) : null}
           </div>
         ) : (
-          <SortableContext
-            key={sortableScopeKey}
-            items={sortedItems.map((item) => item.id)}
-            strategy={verticalListSortingStrategy}
-          >
+          <SortableContext key={sortableScopeKey} items={sortedItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
             <ul className="task-rows">
               {sortedItems.map((item) => (
                 <SortableTodoItem

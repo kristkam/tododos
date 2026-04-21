@@ -21,6 +21,8 @@ export type TodoItem = {
   completed: boolean;
   createdAt: Date;
   order?: number;
+  /** Set when the item is marked complete; used to sort the completed bucket. */
+  completedAt?: Date;
 };
 
 export type TodoList = {

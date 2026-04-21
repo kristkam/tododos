@@ -1,7 +1,7 @@
-import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import { useId, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripIcon } from './icons';
+import { ChevronRightIcon, GripIcon } from './icons';
 
 type SortableSectionProps = {
   id: string;
@@ -11,6 +11,9 @@ type SortableSectionProps = {
 };
 
 export function SortableSection({ id, name, count, children }: SortableSectionProps): ReactElement {
+  const itemsPanelId = useId();
+  const [itemsExpanded, setItemsExpanded] = useState(true);
+
   const {
     attributes,
     listeners,
@@ -22,6 +25,7 @@ export function SortableSection({ id, name, count, children }: SortableSectionPr
   } = useSortable({
     id,
     data: { type: 'section' },
+    transition: null,
   });
 
   const style: CSSProperties = {
@@ -46,6 +50,21 @@ export function SortableSection({ id, name, count, children }: SortableSectionPr
         >
           <GripIcon size={18} />
         </button>
+        <button
+          type="button"
+          className="task-section-toggle"
+          aria-expanded={itemsExpanded}
+          aria-controls={itemsPanelId}
+          onClick={() => {
+            setItemsExpanded((v) => !v);
+          }}
+          aria-label={itemsExpanded ? `Collapse ${name} tasks` : `Expand ${name} tasks`}
+        >
+          <ChevronRightIcon
+            size={18}
+            className={`task-section-toggle-chevron${itemsExpanded ? ' task-section-toggle-chevron--expanded' : ''}`}
+          />
+        </button>
         <h3 className="task-section-title">
           <span className="task-section-title-text">{name}</span>
           <span className="task-section-count" aria-label={`${count} ${count === 1 ? 'item' : 'items'}`}>
@@ -53,7 +72,9 @@ export function SortableSection({ id, name, count, children }: SortableSectionPr
           </span>
         </h3>
       </header>
-      {children}
+      <div id={itemsPanelId} className="task-section-items" hidden={!itemsExpanded}>
+        {children}
+      </div>
     </section>
   );
 }

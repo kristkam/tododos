@@ -62,7 +62,8 @@ describe('TodoList', () => {
     expect(within(select).getByRole('option', { name: 'None' })).toBeInTheDocument();
   });
 
-  it('renders section headers based on alias matching when a scheme is active', () => {
+  it('renders section headers based on alias matching when a scheme is active', async () => {
+    const user = userEvent.setup();
     const scheme: GroupingScheme = {
       id: 'sch-1',
       name: 'Food',
@@ -94,5 +95,11 @@ describe('TodoList', () => {
     expect(screen.getByText('Carrot')).toBeInTheDocument();
     expect(screen.getByText('Beef')).toBeInTheDocument();
     expect(screen.getByText('Mystery')).toBeInTheDocument();
+
+    const carrotLabel = screen.getByText('Carrot');
+    await user.click(screen.getByRole('button', { name: /Collapse Veggies tasks/i }));
+    expect(carrotLabel).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: /Expand Veggies tasks/i }));
+    expect(carrotLabel).toBeVisible();
   });
 });

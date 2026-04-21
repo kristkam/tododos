@@ -65,14 +65,20 @@ export function TodoItem({ item, onUpdate, onDelete, dragHandle }: TodoItemProps
     saveEdit();
   };
 
+  const handleCompletionChange = (nextCompleted: boolean): void => {
+    if (nextCompleted) {
+      onUpdate({ ...item, completed: true, completedAt: new Date() });
+    } else {
+      onUpdate({ ...item, completed: false, completedAt: undefined });
+    }
+  };
+
   return (
-    <div className={`task-row ${item.completed ? 'is-completed' : ''}`}>
+    <div
+      className={`task-row task-row--pill${item.completed ? ' is-completed' : ''}`}
+    >
       {dragHandle}
-      <Checkbox
-        checked={item.completed}
-        onChange={(completed) => onUpdate({ ...item, completed })}
-        label={item.text}
-      />
+      <Checkbox checked={item.completed} onChange={handleCompletionChange} label={item.text} />
       {isEditing ? (
         <input
           ref={inputRef}

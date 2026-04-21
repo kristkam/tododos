@@ -481,6 +481,63 @@ html[data-theme='dark'] .app select {
   margin-bottom: var(--space-4);
 }
 
+.todo-view-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.todo-view-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.todo-view-menu {
+  position: relative;
+}
+
+.todo-view-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 40;
+  min-width: 12.5rem;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.todo-view-menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.todo-view-menu-item:hover,
+.todo-view-menu-item:focus-visible {
+  background: var(--color-muted-well-strong);
+  outline: none;
+}
+
+.todo-view-menu-item[aria-checked='true'] {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
 .todo-view-title {
   margin: 0;
   font-size: var(--text-2xl);
@@ -488,6 +545,7 @@ html[data-theme='dark'] .app select {
   color: var(--color-text);
   letter-spacing: -0.025em;
   line-height: var(--leading-tight);
+  min-width: 0;
 }
 
 .todo-view-progress {
@@ -500,20 +558,8 @@ html[data-theme='dark'] .app select {
 
 .todo-view-progress-fill {
   height: 100%;
-  background: var(--color-accent);
+  background: var(--color-text-muted);
   transition: width var(--duration-base) var(--ease-out);
-}
-
-.todo-view-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.todo-view-sort {
-  /* rounded pill sort control */
-  border-radius: 999px;
 }
 
 .todo-view-grouping {
@@ -587,6 +633,22 @@ html[data-theme='dark'] .app select {
   padding: 0;
 }
 
+.todo-view .task-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.todo-grouped-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.todo-grouped-sections .task-section + .task-section {
+  margin-top: 0;
+}
+
 .sortable-task-row {
   list-style: none;
   cursor: grab;
@@ -601,9 +663,37 @@ html[data-theme='dark'] .app select {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 0.25rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 0.25rem;
+  border-radius: var(--radius-md);
   min-height: 3.25rem;
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out), opacity var(--duration-base) var(--ease-out);
+}
+
+/* Pill rows (todo list): light card lift + border; no left accent stripe. */
+.task-row.task-row--pill {
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Row :hover steals the first tap on iOS (synthetic hover) before the checkbox click fires. */
+@media (hover: hover) and (pointer: fine) {
+  .task-row:hover {
+    background: var(--color-muted-well-strong);
+  }
+
+  .task-row.task-row--pill:hover {
+    background: var(--color-muted-well-strong);
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.task-row.task-row--pill.is-completed {
+  background: var(--color-muted-well);
 }
 
 .drag-handle {
@@ -660,6 +750,8 @@ html[data-theme='dark'] .app select {
   justify-content: center;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Expand hit area to 44x44 on touch without changing the visual diameter. */
@@ -679,6 +771,11 @@ html[data-theme='dark'] .app select {
     position: absolute;
     inset: -0.25rem;
   }
+
+  .task-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .task-checkbox.is-checked {
@@ -692,6 +789,21 @@ html[data-theme='dark'] .app select {
   align-items: center;
   justify-content: center;
   line-height: 0;
+}
+
+@keyframes checkboxCheckIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.task-checkbox-check--enter {
+  animation: checkboxCheckIn 120ms var(--ease-out) forwards;
 }
 
 .task-checkbox:focus-visible {
@@ -719,6 +831,21 @@ html[data-theme='dark'] .app select {
   flex-shrink: 0;
   align-items: center;
   gap: 0.125rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.task-row:focus-within .task-row-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .task-row:hover .task-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -752,14 +879,6 @@ html[data-theme='dark'] .app select {
 
   .todo-view-title {
     font-size: 1.5rem;
-  }
-
-  .sortable-task-row {
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-    -webkit-transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
   }
 }
 
@@ -1249,8 +1368,47 @@ html[data-theme='dark'] .app select {
   color: var(--color-text-muted);
 }
 
-.task-section-header-static {
-  padding-left: calc(0.25rem + 1.5rem);
+.task-section-drag-placeholder {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.task-section-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.task-section-toggle:hover,
+.task-section-toggle:focus-visible {
+  background: var(--color-muted-well-strong);
+  outline: none;
+}
+
+.task-section-toggle-chevron {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.task-section-toggle-chevron--expanded {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-section-toggle-chevron {
+    transition: none;
+  }
 }
 
 .task-section-title {
