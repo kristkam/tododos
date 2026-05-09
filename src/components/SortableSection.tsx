@@ -6,11 +6,18 @@ import { ChevronRightIcon, GripIcon } from './icons';
 type SortableSectionProps = {
   id: string;
   name: string;
-  count: number;
+  completedCount: number;
+  totalCount: number;
   children: ReactNode;
 };
 
-export function SortableSection({ id, name, count, children }: SortableSectionProps): ReactElement {
+export function SortableSection({
+  id,
+  name,
+  completedCount,
+  totalCount,
+  children,
+}: SortableSectionProps): ReactElement {
   const itemsPanelId = useId();
   const [itemsExpanded, setItemsExpanded] = useState(true);
 
@@ -67,8 +74,11 @@ export function SortableSection({ id, name, count, children }: SortableSectionPr
         </button>
         <h3 className="task-section-title">
           <span className="task-section-title-text">{name}</span>
-          <span className="task-section-count" aria-label={`${count} ${count === 1 ? 'item' : 'items'}`}>
-            {count}
+          <span
+            className="task-section-count"
+            aria-label={`${completedCount} of ${totalCount} ${totalCount === 1 ? 'item' : 'items'} completed`}
+          >
+            {completedCount}/{totalCount}
           </span>
         </h3>
       </header>

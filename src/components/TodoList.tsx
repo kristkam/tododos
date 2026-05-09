@@ -172,6 +172,15 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     [matched],
   );
 
+  const otherSectionProgress = useMemo(() => {
+    if (!matched) {
+      return { completed: 0, total: 0 };
+    }
+    const total = matched.other.length;
+    const completed = matched.other.reduce((n, i) => n + (i.completed ? 1 : 0), 0);
+    return { completed, total };
+  }, [matched]);
+
   const canSaveOrderToScheme = useMemo(() => {
     if (!scheme || !effectiveGroupOrder || effectiveGroupOrder.length === 0) {
       return false;
@@ -519,7 +528,8 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
                   key={section.group.id}
                   id={section.group.id}
                   name={section.group.name}
-                  count={section.items.length}
+                  completedCount={section.items.reduce((n, i) => n + (i.completed ? 1 : 0), 0)}
+                  totalCount={section.items.length}
                 >
                   <ul className="task-rows">
                     <SortableContext items={section.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
@@ -559,9 +569,9 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
                     <span className="task-section-title-text">Other</span>
                     <span
                       className="task-section-count"
-                      aria-label={`${matched.other.length} ${matched.other.length === 1 ? 'item' : 'items'}`}
+                      aria-label={`${otherSectionProgress.completed} of ${otherSectionProgress.total} ${otherSectionProgress.total === 1 ? 'item' : 'items'} completed`}
                     >
-                      {matched.other.length}
+                      {otherSectionProgress.completed}/{otherSectionProgress.total}
                     </span>
                   </h3>
                 </header>

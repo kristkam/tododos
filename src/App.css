@@ -1439,7 +1439,7 @@ html[data-theme='dark'] .app select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
+  min-width: 2.25rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: var(--color-border);
