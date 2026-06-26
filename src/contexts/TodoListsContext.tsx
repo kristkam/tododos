@@ -117,10 +117,13 @@ export function TodoListsProvider({ children }: TodoListsProviderProps): ReactEl
       ...list,
       updatedAt: new Date(),
     };
+    const previousLists = listsRef.current;
+    setLists((prev) => prev.map((entry) => (entry.id === merged.id ? merged : entry)));
     try {
       await todoStorage.updateList(merged);
       return true;
     } catch (err) {
+      setLists(previousLists);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update list';
       showToastRef.current(errorMessage, 'error');
       console.error('Error updating list:', err);

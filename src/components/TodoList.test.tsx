@@ -62,6 +62,53 @@ describe('TodoList', () => {
     expect(within(select).getByRole('option', { name: 'None' })).toBeInTheDocument();
   });
 
+  it('removes an item optimistically when delete is clicked', async () => {
+    const user = userEvent.setup();
+    const onUpdateList = vi.fn().mockResolvedValue(undefined);
+    const list = baseList({
+      items: [
+        { id: 'a', text: 'Milk', completed: false, createdAt: new Date(), order: 0 },
+        { id: 'b', text: 'Eggs', completed: false, createdAt: new Date(), order: 1 },
+      ],
+    });
+
+    renderWithGroupings(<TodoList list={list} onUpdateList={onUpdateList} />);
+
+    await user.click(screen.getByRole('button', { name: /Delete Milk/i }));
+
+    expect(screen.queryByText('Milk')).not.toBeInTheDocument();
+    expect(screen.getByText('Eggs')).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(onUpdateList).toHaveBeenCalledTimes(1);
+    });
+    const updated = onUpdateList.mock.calls[0][0] as TodoListModel;
+    expect(updated.items.map((item) => item.id)).toEqual(['b']);
+  });
+
+  it('updates item text when edit is saved', async () => {
+    const user = userEvent.setup();
+    const onUpdateList = vi.fn().mockResolvedValue(undefined);
+    const list = baseList({
+      items: [{ id: 'a', text: 'Old task', completed: false, createdAt: new Date(), order: 0 }],
+    });
+
+    renderWithGroupings(<TodoList list={list} onUpdateList={onUpdateList} />);
+
+    await user.click(screen.getByRole('button', { name: /Edit Old task/i }));
+    const input = screen.getByRole('textbox', { name: /Edit task text/i });
+    await user.clear(input);
+    await user.type(input, 'New task');
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByText('New task')).toBeInTheDocument();
+    expect(screen.queryByText('Old task')).not.toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(onUpdateList).toHaveBeenCalledTimes(1);
+    });
+    const updated = onUpdateList.mock.calls[0][0] as TodoListModel;
+    expect(updated.items[0].text).toBe('New task');
+  });
+
   it('renders section headers based on alias matching when a scheme is active', async () => {
     const user = userEvent.setup();
     const scheme: GroupingScheme = {

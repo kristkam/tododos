@@ -3,7 +3,6 @@ import {
   useEffect,
   useId,
   useMemo,
-  useOptimistic,
   useRef,
   useState,
   useTransition,
@@ -109,12 +108,16 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
   const addTaskInputRef = useRef<HTMLInputElement>(null);
   const addTaskSubmitRef = useRef<HTMLButtonElement>(null);
 
-  const [optimisticItems, addOptimisticItems] = useOptimistic(list.items, applyTodoItemsAction);
+  const [items, setItems] = useState(list.items);
 
   const listRef = useRef(list);
-  const optimisticItemsRef = useRef(optimisticItems);
+  const itemsRef = useRef(items);
   listRef.current = list;
-  optimisticItemsRef.current = optimisticItems;
+  itemsRef.current = items;
+
+  useEffect(() => {
+    setItems(list.items);
+  }, [list.id, list.items]);
 
   const scheme: GroupingScheme | undefined = useMemo(() => {
     if (!list.activeGroupingId) {
@@ -158,7 +161,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     }
   }, [list.groupOrder, optimisticGroupOrder]);
 
-  const sortedItems = useMemo(() => sortItems(optimisticItems, sortBy), [optimisticItems, sortBy]);
+  const sortedItems = useMemo(() => sortItems(items, sortBy), [items, sortBy]);
 
   const matched: MatchResult | null = useMemo(() => {
     if (!scheme) {
@@ -196,8 +199,8 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
 
   const runItemsMutation = useCallback(
     (action: TodoItemsOptimisticAction): void => {
-      const nextItems = applyTodoItemsAction(optimisticItemsRef.current, action);
-      addOptimisticItems(action);
+      const nextItems = applyTodoItemsAction(itemsRef.current, action);
+      setItems(nextItems);
       startTransition(() => {
         void onUpdateList({
           ...listRef.current,
@@ -206,7 +209,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
         });
       });
     },
-    [addOptimisticItems, onUpdateList, startTransition],
+    [onUpdateList, startTransition],
   );
 
   const setSortFromMenu = useCallback(
@@ -277,7 +280,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
       return false;
     }
 
-    const items = optimisticItemsRef.current;
+    const items = itemsRef.current;
     const maxOrder = items.reduce((max, item) => {
       const itemOrder = item.order ?? new Date(item.createdAt).getTime();
       return Math.max(max, itemOrder);
@@ -330,8 +333,8 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     }, 0);
   };
 
-  const completedCount = optimisticItems.filter((item) => item.completed).length;
-  const totalCount = optimisticItems.length;
+  const completedCount = items.filter((item) => item.completed).length;
+  const totalCount = items.length;
   const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
   const progressLabel =
     totalCount === 0
@@ -346,7 +349,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
         return;
       }
 
-      const sorted = sortItems(optimisticItemsRef.current, sortBy);
+      const sorted = sortItems(itemsRef.current, sortBy);
       const oldIndex = sorted.findIndex((item) => item.id === active.id);
       const newIndex = sorted.findIndex((item) => item.id === over.id);
       if (oldIndex < 0 || newIndex < 0) {
@@ -405,7 +408,7 @@ export function TodoList({ list, onUpdateList, headerActions }: TodoListProps): 
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
       return;
     }
-    const nextItems = reorderWithinSubset(optimisticItemsRef.current, subsetIds, fromIndex, toIndex);
+    const nextItems = reorderWithinSubset(itemsRef.current, subsetIds, fromIndex, toIndex);
     runItemsMutation({ type: 'reorder', items: nextItems });
   };
 
